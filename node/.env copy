@@ -1,0 +1,13 @@
+# Twitch Credentials 
+TWITCHBOTUSER=twitchuser-bot
+TWITCHBOTSECRET=oauth:yourPassword
+
+# Spotify Credentials
+CLIENTID=CLIENTID
+CLIENTSECRET=yourPassword
+
+
+TWITCHAPIUSER=CLIENTID
+TWICHAPISECRET=yourPassword
+
+OVERLAY_SECRET=yourPassword

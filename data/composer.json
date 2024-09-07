@@ -1,0 +1,22 @@
+{
+    "name": "rubizockt/data",
+    "description": "data-files for website",
+    "require": {
+        "jwilsson/spotify-web-api-php": "^5.6",
+        "ext-curl": "*",
+        "ext-libxml": "*",
+        "ext-dom": "*"
+    },
+    "license": "ISC",
+    "autoload": {
+        "psr-4": {
+            "Rubizockt\\Data\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "RubiZockt",
+            "email": "rubizockt@protonmail.com"
+        }
+    ]
+}
