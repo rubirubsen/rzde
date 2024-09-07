@@ -1,0 +1,497 @@
+@import url(https://fonts.googleapis.com/css?family=Roboto);
+
+/*Immer gültige CSS - Regeln*/
+
+video, audio {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    width: 300px;
+    height: auto;
+    z-index: 1000;
+}
+
+
+
+span.s1 {
+    position: absolute;
+    top: 0;
+    font-size: 15rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #3C4447;
+}
+
+span.s2 {
+    font-weight: 800;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    font-size: 15rem;
+    text-transform: uppercase;
+    color: #3C4447;
+}
+
+/*My hum... body.. yeah..*/
+body {
+    background-color: #353B3F;
+    font-family: "Roboto", sans-serif;
+    scrollbar-width: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Image on the left side */
+.thumbnail {
+    float: left;
+    position: relative;
+    left: 30px;
+    top: -30px;
+    height: 320px;
+    width: 530px;
+    -webkit-box-shadow: 10px 10px 60px 0px rgba(0, 0, 0, 0.75);
+    -moz-box-shadow: 10px 10px 60px 0px rgba(0, 0, 0, 0.75);
+    box-shadow: 10px 10px 60px 0px rgba(0, 0, 0, 0.75);
+    overflow: hidden;
+}
+
+/*object-fit: cover;*/
+/*object-position: center;*/
+img.left {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    height: auto;
+    width: 100%;
+    -webkit-transform: translate(-50%, -50%);
+    -ms-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
+}
+
+/* Right side of the card */
+.right {
+    margin-left: 590px;
+    margin-right: 20px;
+}
+
+h1 {
+    padding-top: 15px;
+    font-size: 1.3rem;
+    color: #4B4B4B;
+}
+
+.author {
+    background-color: #ffc593;
+    height: 30px;
+    width: 110px;
+    border-radius: 20px;
+}
+
+.author > img {
+    padding-top: 5px;
+    margin-left: 10px;
+    float: left;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+}
+
+h2 {
+    padding-top: 8px;
+    margin-right: 6px;
+    text-align: right;
+    font-size: 0.8rem;
+}
+
+.separator {
+    margin-top: 10px;
+    border: 1px solid #C3C3C3;
+}
+
+.readmore {
+    margin-top: 1em;
+}
+
+p {
+    text-align: justify;
+    padding-top: 10px;
+    font-size: 0.95rem;
+    line-height: 150%;
+    color: #4B4B4B;
+}
+
+/* DATE of release*/
+h5 {
+    position: absolute;
+    left: 30px;
+    bottom: -120px;
+    font-size: 6rem;
+    color: #C3C3C3;
+}
+
+h6 {
+    position: absolute;
+    left: 30px;
+    bottom: -55px;
+    font-size: 2rem;
+    color: #C3C3C3;
+}
+
+/* Those futur buttons */
+ul {
+    margin-left: 250px;
+}
+
+li {
+    display: inline;
+    list-style: none;
+    padding-right: 40px;
+    color: #7B7B7B;
+}
+
+tr:nth-child(even) {
+    background: #CCC
+}
+
+tr:nth-child(odd) {
+    background: #FFF
+}
+
+td {
+    border: 1px none #000000;
+}
+
+th {
+    font-weight: bolder;
+    background-color: #ff8000;
+}
+
+/* Floating action button */
+.fab {
+    position: absolute;
+    right: 50px;
+    bottom: -40px;
+    box-sizing: border-box;
+    padding-top: 18px;
+    background-color: #FF8000;
+    width: 80px;
+    height: 80px;
+    color: white;
+    text-align: center;
+    border-radius: 50%;
+    -webkit-box-shadow: 10px 10px 50px 0px rgba(0, 0, 0, 0.75);
+    -moz-box-shadow: 10px 10px 50px 0px rgba(0, 0, 0, 0.75);
+    box-shadow: 10px 10px 50px 0px rgba(0, 0, 0, 0.75);
+}
+
+.navbar {
+    background: black;
+    color: white;
+    font-family: arial, helvetica;
+    margin-top: -0.2em;
+    background-color: black;
+    height: fit-content;
+    width: 6em;
+    z-index: 1;
+    position: fixed;
+    border-radius: 5px;
+    margin-left: 10px;
+    padding-left: 5px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    -webkit-transition: all 0.5s linear;
+    -moz-transition: all 0.5s linear;
+    -o-transition: all 0.5s linear;
+    transition: all 0.5s linear;
+    -moz-box-shadow: 2px 2px 4px 0px #ff8000;
+    -webkit-box-shadow: 2px 2px 4px 0px #ff8000;
+    box-shadow: 2px 2px 4px 0px #ff8000;
+    -moz-border-radius: 7px 7px 7px 7px;
+    -webkit-border-radius: 7px 7px 7px 7px;
+    border-radius: 7px 7px 7px 7px;
+}
+
+.default {
+    background-color: #ff8000;
+}
+
+.rubiRadio {
+    margin: auto;
+    display: grid;
+    width: 70%;
+}
+
+.adminPage {
+    background-color: black;
+    margin: auto;
+    z-index: 1;
+    border-radius: 11px;
+}
+
+.scrollContent {
+    /* align-content: center; */
+    height: 801px;
+    overflow: scroll;
+    /* padding-bottom: 4em; */
+}
+
+.navbar:hover, .navbar:focus, .navbar:active {
+    -webkit-box-shadow: 15px 15px 20px rgba(0, 0, 0, 0.4);
+    -moz-box-shadow: 15px 15px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: 15px 15px 20px rgba(0, 0, 0, 0.4);
+    -webkit-transform: scale(1.05);
+    -moz-transform: scale(1.05);
+    transform: scale(1.05);
+}
+
+.navbar a {
+    color: orange;
+    text-decoration: none;
+    margin-bottom: 4px;
+}
+
+.navbar a:visited {
+    color: white;
+    text-decoration: none;
+}
+
+.navbar a:hover {
+    color: purple;
+}
+
+.sticky {
+    position: fixed;
+    top: 8px;
+    width: 99vw;
+    margin-left: -2px;
+    z-index: 1;
+    border-style: solid;
+    border-width: 2px;
+    border-color: black;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 15px;
+}
+
+.sticky + .content {
+    padding-top: 60px;
+}
+
+.shadow {
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 3;
+    position: fixed;
+    margin-left: -9px;
+    margin-top: -15px;
+    width: 105%;
+    height: 105%;
+}
+
+.splash_text {
+    font-family: arial;
+    font-weight: bolder;
+    font-size: 2em;
+}
+
+.mainContent {
+    border-radius: 16px;
+    overflow: hidden;
+    border-style: solid;
+    border-width: 2px;
+    height: 95vh;
+}
+
+/* The card */
+.card {
+    position: relative;
+    height: 450px;
+    width: 900px;
+    margin: auto;
+    margin-top: 60px;
+    background-color: #FFF;
+    -webkit-box-shadow: 10px 10px 93px 0px rgba(0, 0, 0, 0.75);
+    -moz-box-shadow: 10px 10px 93px 0px rgba(0, 0, 0, 0.75);
+    box-shadow: 10px 10px 93px 0px rgba(0, 0, 0, 0.75);
+}
+
+video {
+    padding-top: 0.8em;
+}
+
+/* BLOG-DESIGN */
+.blogEntryPreview {
+    margin-top: 25px;
+    background-color: white;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 15px;
+    margin-bottom: 10px;
+    padding: 5px;
+}
+
+.blogEntryFull {
+    height: fit-content;
+    width: 70%;
+    margin-left: 15%;
+    background-color: #fff;
+    z-index: 4;
+    position: absolute;
+    margin-top: -3em;
+    border-radius: 15px;
+    padding: 1em;
+    border-width: 3px;
+    border-style: solid;
+    border-color: #ff8000;
+}
+
+.blogHeader {
+    padding-left: 10px;
+    font-size: 2em;
+}
+
+.blogTime {
+    padding-left: 10px;
+    font-size: 1em;
+}
+
+.closeEntry {
+    color: darkorange;
+    z-index: 3;
+    position: relative;
+    text-align: right;
+}
+
+.dayZtable {
+    width: fit-content;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    margin: 2em auto 1em auto;
+}
+
+.entryBody {
+    padding-left: 10px;
+    font-size: 1.2em;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    width: 90%;
+    margin: auto;
+    padding-bottom: 1em;
+    padding-top: 0.5em;
+}
+
+.newsContainer {
+    width: 100%;
+    text-align: center;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 1.2em;
+    padding-top: 1em;
+}
+
+.newsTitle {
+    font-weight: bolder;
+}
+
+.loginContainer {
+    text-align: center;
+    width: 200px;
+    height: 70px;
+    margin: auto;
+}
+
+.logo {
+    /* font-size: 1.2em; */
+    text-align: center;
+    color: white;
+    font-family: "Tahoma", sans-serif;
+    background-color: black;
+    border: 2px white solid;
+    width: fit-content;
+    margin: auto;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-bottom: 2px;
+
+}
+
+.mobile {
+    visibility: hidden;
+}
+
+#audioContainer {
+    text-align: right;
+    margin-top: -1em;
+    margin-right: 1em;
+}
+
+audio:hover, audio:focus, audio:active {
+    -webkit-box-shadow: 15px 15px 20px rgba(0, 0, 0, 0.4);
+    -moz-box-shadow: 15px 15px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: 15px 15px 20px rgba(0, 0, 0, 0.4);
+    -webkit-transform: scale(1.05);
+    -moz-transform: scale(1.05);
+    transform: scale(1.05);
+}
+
+audio {
+    -webkit-transition: all 0.5s linear;
+    -moz-transition: all 0.5s linear;
+    -o-transition: all 0.5s linear;
+    transition: all 0.5s linear;
+    -moz-box-shadow: 2px 2px 4px 0px #ff8000;
+    -webkit-box-shadow: 2px 2px 4px 0px #ff8000;
+    box-shadow: 2px 2px 4px 0px #ff8000;
+    -moz-border-radius: 7px 7px 7px 7px;
+    -webkit-border-radius: 7px 7px 7px 7px;
+    border-radius: 7px 7px 7px 7px;
+}
+
+/*Auflösung über 768px (Browser z.B.)*/
+@media only screen and (min-width: 768px) and (max-width: 1920px) {
+
+
+}
+
+/*Auflösung unter 760pc (Mobile z.B.)*/
+
+@media only screen and (max-width: 767px) {
+
+      .rubiRadio {
+            /* margin-bottom: 1em; */
+            /* margin-top: 123%; */
+            z-index: 40;
+            display: -webkit-inline-box;
+            margin-right: 1.3em;
+      }
+
+     #audioContainer{
+
+            position: absolute;
+            height: 200px;
+            margin-top: 42.6em;
+            margin-left: auto;
+            margin-right: auto;
+            align-self: center;
+            /* display: grid; */
+            width: 95%;
+     }
+     #navbar{
+         width: 85%;
+         height: 15px;
+         overflow: scroll;
+     }
+     .logo{
+         width: 90%;
+     }
+        .mobile {
+            z-index: 20;
+            position: absolute;
+            margin-left: 11em;
+            /* z-index: 55; */
+            color: white;
+            visibility: visible;
+            font-size: 0.8em;
+            margin-top: 0.2em;
+        }
+}

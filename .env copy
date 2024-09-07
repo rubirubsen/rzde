@@ -1,0 +1,5 @@
+SA_PASSWORD: yourPassword
+ACCEPT_EULA: Y
+MYSQLPW: yourPassword
+DBUSER:databaseUser
+
