@@ -535,3 +535,5 @@ irc/conf/docker.motd
 data/spotify/info/current_image.jpg
 data/spotify/info/current_track.json
 docker-compose.yml
+container-logs.txt
+node/core
