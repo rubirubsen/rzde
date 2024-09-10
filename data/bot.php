@@ -6,108 +6,31 @@ if(isset($_GET['uid'])) {
 ?>
 <!DOCTYPE html>
 <html lang="de">
-    <head>
+<head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="./css/spotify.css">
         <title>Overlay</title>
-        <style>
-            body {
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-                background: transparent;
-            }
+</head>
 
-            img, video, audio {
-                pointer-events: none; /* Verhindert Interaktionen mit den Medien */
-                position: fixed;
-            }
-
-            img {
-                width: 120px;
-                height: 120px;
-            }
-
-            video {
-                width: 100%;
-                height: 100%;
-                top: 0;
-                left: 0;
-            }
-            p {
-                margin-top: 0px;
-                margin-bottom: 5px;
-                margin-left: auto;
-                margin-right: auto;
-                background-color: rgba(0, 0, 0,1);
-                height: 20px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis; 
-                width: fit-content;
-            }
-
-            @keyframes fall {
-                    0% {
-                        transform: translateY(-100px);
-                    }
-                    80% {
-                        transform: translateY(calc(100vh - 100px));
-                        animation-timing-function: ease-in;
-                    }
-                    90% {
-                        transform: translateY(calc(100vh - 120px));
-                        animation-timing-function: ease-out;
-                    }
-                    100% {
-                        transform: translateY(calc(100vh - 100px));
-                    }
-                }
-
-                .falling-emoji {
-                    animation: fall var(--fall-duration, 8s) ease-in forwards, 
-                            bounce 4s ease-out var(--fall-duration, 8s);
-                }
-                @keyframes bounceLeftRight {
-                    0% { transform: translateX(-100%); }
-                    25% { transform: translateX(0%); }
-                    50% { transform: translateX(calc(100% + 20px)); }
-                    75% { transform: translateX(0%); }
-                    100% { transform: translateX(-100%); }
-                }
-
-                @keyframes bounce {
-                    0% {
-                        transform: translateY(calc(100vh - 100px));
-                    }
-                    80% {
-                        transform: translateY(calc(100vh - 200px));
-                    }
-                    100% {
-                        transform: translateY(calc(100vh));                        
-                    }
-                }
-                .title-scroller {
-                display: inline-block;
-                white-space: nowrap;
-                animation: bounceLeftRight 30s linear infinite;
-                font-size: 1.2em;
-                color: #fff;
-                background: rgba(0, 0, 0, 0);
-                padding: 5px;
-                -webkit-text-stroke-width: 0.25vh;
-                -webkit-text-stroke-color: black;
-                width: 100%;
-                font-family: 'Tahoma', sans serif;
-                font-weight: bolder;
-                }
-
-        </style>
-    </head>
 
     <body>
         <div id="cred" style="display:none" cred-data="<?php echo $uid ?>"></div>
     </body>
+    
+    <div id="track-info" class="track-info" style="visibility: hidden;">
+        
+        <div class="trackCover" id="trackCover"></div>
+        
+        <div id="scrollerRow" class="scrollerRow">
+            <p><strong>Seeed</strong></p>
+        </div>
+        
+        <div id="topRow" class="topRow">    
+            <p style="margin-top: 0px;">G€LD</p>
+        </div>
+    </div>
+
     <script>
             var uid =  document.getElementById('cred').getAttribute('cred-data');
             // WebSocket-Verbindung herstellen
@@ -139,51 +62,32 @@ if(isset($_GET['uid'])) {
                 const trackInfo = message.trackInfo;
                 let oldTitle;
 
-                // Funktion zum Erstellen des Track-Info Divs
-                function createTrackInfoDiv() {
-                    const div = document.createElement('div');
-                    div.id = 'track-info';
-                    div.style.position = 'absolute';
-                    div.style.bottom = '10px';
-                    div.style.left = '10px';
-                    div.style.width = '250px';
-                    div.style.height = '60px';
-                    div.style.backgroundImage = 'url("/spotify/info/current_image.jpg")';
-                    div.style.backdropFilter = 'blur(30px)';
-                    div.style.backgroundSize = 'cover';
-                    div.style.backgroundRepeat = 'round';
-                    div.style.color = 'white';
-                    div.style.borderRadius = '5px';
-                    div.style.display = 'block';
-                    div.style.overflow = 'hidden';
-                    document.body.appendChild(div);
-                    
-                    return div;
-                }
 
                 // Funktion zum Aktualisieren des Track-Info Divs
                 function updateTrackInfoDiv(trackInfo) {
-                    if (!playerDiv) {
-                        playerDiv = createTrackInfoDiv();
-                    }
 
-                    // Cache-Buster: Aktueller Zeitstempel anhängen, um Caching zu verhindern
+                    const trackInfoDiv = document.getElementById('track-info');
                     const timestamp = new Date().getTime();
-                    const backgroundImageUrl = `/spotify/info/current_image.jpg?${timestamp}`;
+                    const backgroundImageUrl = `spotify/info/current_image.jpg?${encodeURIComponent(trackInfo.artistNames)}`;
+                    const trackCover = document.getElementById('trackCover');
+                    const topRow = document.getElementById('topRow');
+                    const srollerRow = document.getElementById('srollerRow');
 
-                    playerDiv.innerHTML = `
-                        <p><strong>${trackInfo.artistNames}</strong></p>
-                        <p class="title-scroller">${trackInfo.trackName}</p>
-                    `;
-                    playerDiv.style.backgroundImage = `url("${backgroundImageUrl}")`;
-                    playerDiv.style.display = 'block';
+                    trackCover.style.backgroundImage = `url(${backgroundImageUrl})`;
+
+                    topRow.innerHTML = `<p><strong>${trackInfo.trackName}</strong></p>`;
+                    scrollerRow.innerHTML = `<p style="margin-top: 0px;">${trackInfo.artistNames}</p>`;
+
+                    trackInfoDiv.style.visibility = 'visible';
+                    return trackInfoDiv;
+
                 }
 
                 // Hauptlogik zur Verarbeitung von Nachrichten
                 if (parsedMessage.cmd === 'trackUpdate') {
                     const trackInfo = parsedMessage.trackInfo;
                     console.log('Overlay-Artist ', trackInfo.artistNames);
-
+                    
                     if (!oldTitle || oldTitle !== trackInfo.artistNames) {
                         if (playerDiv) playerDiv.remove();  // Altes Div entfernen
                         playerDiv = null;  // Referenz zurücksetzen

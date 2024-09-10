@@ -815,22 +815,27 @@ client.on('chat', async (channel, user, message, self) => {
 httpsServer.listen(port, () => {
     
     setInterval(async () => {
+        
         const track = await spotify.getCurrentTrack();
+        
         if (track) {
             const currentTrackJson = '/app/views/spotify/info/current_track.json';
+
             let existingTrack = null;
             
             if (fs.existsSync(currentTrackJson)) {
                 existingTrack = JSON.parse(fs.readFileSync(currentTrackJson, 'utf8')).track;
+
             }
-            
-            if (JSON.stringify(existingTrack) !== JSON.stringify(track)) {
+            if (JSON.stringify(existingTrack.trackName) !== JSON.stringify(track.trackName)) {
+
                 sendAll(`{"cmd":"trackUpdate", "trackInfo": ${JSON.stringify(track)}}`);
                 fs.writeFileSync(currentTrackJson, JSON.stringify({ track: track }));
                 console.log(`Aktueller Song aktualisiert: ${JSON.stringify(track)}`);
             } else {
                 console.log('Kein neuer Song, keine Aktualisierung notwendig.');
             }
+        
         }
     }, 15000); // 15 Sekunden Intervall
     

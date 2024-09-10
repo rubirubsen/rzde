@@ -11,6 +11,7 @@ const sp_client_id = process.env.CLIENTID;
 const sp_client_secret = process.env.CLIENTSECRET;
 const sp_redirect_uri = 'https://rubizockt.de:3000/spotify/callback';
 
+let songProof = '';
 let refresh_token = '';
 let access_token = '';
 let start_time = null;
@@ -215,9 +216,11 @@ function getRemainingTime() {
 }
 
 async function getCurrentTrack() {
+    if(songProof != ''){
+        console.log(songProof);
+    }
     try {    
         await ensureAccessToken();
-
         const response = await axios.get('https://api.spotify.com/v1/me/player/currently-playing', {
             headers: {
                 Authorization: `Bearer ${access_token}`
@@ -225,7 +228,6 @@ async function getCurrentTrack() {
         });
 
         const currentlyPlaying = response.data.item;
-
         if (!currentlyPlaying) {
             console.log('NO PLAYING NOTHING!');
             return 'Es wird derzeit nichts abgespielt.';
@@ -233,38 +235,48 @@ async function getCurrentTrack() {
 
         const trackName = currentlyPlaying.name;
         const artists = currentlyPlaying.artists;
-        const albumCover = currentlyPlaying.album.images[0].url;
-        const artistNames = artists.map(artist => artist.name).join(', ');
-
         const currentTrackFile = '/app/views/spotify/info/current_track.txt';
         const currentArtistFile = '/app/views/spotify/info/current_artist.txt';
-        const trackImage = '/app/views/spotify/info/current_image.jpg'; // Festlegen des Pfades für das Bild
+        const trackImage = `/app/views/spotify/info/current_image.jpg`;
+        const artistNames = artists.map(artist => artist.name).join(', ');
 
-        let existingTrack = '';
-        let existingArtist = '';
+        if (songProof!= '') {
+            if(songProof!= trackName) {
 
-        if (fs.existsSync(currentTrackFile)) {
-            existingTrack = fs.readFileSync(currentTrackFile, 'utf8');
-        }
-        if (fs.existsSync(currentArtistFile)) {
-            existingArtist = fs.readFileSync(currentArtistFile, 'utf8');
-        }
+                console.log('Song is not the same as proof!');
+                songProof = trackName;
+                
+                const albumCover = currentlyPlaying.album.images[0].url;
+                const artistNames = artists.map(artist => artist.name).join(', ');
 
-        // Überprüfen, ob der Trackname oder die Künstler aktualisiert werden müssen
-        if (existingTrack !== trackName) {
+                
+
+                fs.writeFileSync(currentTrackFile, trackName, 'utf8');
+                fs.writeFileSync(currentArtistFile, artistNames, 'utf8');
+                await downloadImage(albumCover, trackImage);
+
+            }else{
+                console.log('Song is the same as proof!');
+            }
+
+        }else{
+
+            console.log('No SongProof yet!');
+            songProof = trackName;
+            const artists = currentlyPlaying.artists;
+            const albumCover = currentlyPlaying.album.images[0].url;
+            
+            const currentTrackFile = '/app/views/spotify/info/current_track.txt';
+            const currentArtistFile = '/app/views/spotify/info/current_artist.txt';
+            const trackImage = `/app/views/spotify/info/current_image.jpg`;
+
             fs.writeFileSync(currentTrackFile, trackName, 'utf8');
-            console.log(`Aktueller Titel in ${currentTrackFile} aktualisiert: ${trackName}`);
-        }
-        if (existingArtist !== artistNames) {
             fs.writeFileSync(currentArtistFile, artistNames, 'utf8');
-            console.log(`Aktueller Künstler in ${currentArtistFile} aktualisiert: ${artistNames}`);
-        }
-
-        if (albumCover) {
             await downloadImage(albumCover, trackImage);
         }
 
-        return { trackName, artistNames };
+        return { trackName, artistNames,trackImage };
+
     } catch (error) {
         if (error.response && error.response.status === 401) {
             console.log("Access-Token abgelaufen, erneuere das Token...");
