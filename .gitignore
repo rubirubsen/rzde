@@ -537,3 +537,5 @@ data/spotify/info/current_track.json
 docker-compose.yml
 container-logs.txt
 node/core
+data/test.php
+data/test.php
