@@ -1,7 +1,5 @@
 
 import http from 'https';
-import https from 'follow-redirects';
-import fs from 'fs'; 
 
 // Funktion zur Generierung einer Zufallszahl
 export const randomNumber = function(maxVal) {

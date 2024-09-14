@@ -16,6 +16,7 @@ let refresh_token = '';
 let access_token = '';
 let start_time = null;
 let refreshInMs = 5000;
+let refreshTokenTimer = null; 
 
 let code = md5('rubizockt'); //TODO: ein Codebegriff in .env einbauen
 const getTimestamp = () => {
@@ -94,17 +95,37 @@ async function callbackProcess(req, res) {
 }
 
 function scheduleTokenRefresh(tokenData) {
-    refresh_token = tokenData.refresh_token;
-    access_token = tokenData.access_token;
+    // Überprüfe, ob der refresh_token sich geändert hat
+    if (tokenData.refresh_token && refresh_token !== tokenData.refresh_token) {
+        refresh_token = tokenData.refresh_token;
+        console.log('Neuer Refresh Token gespeichert:', refresh_token);
+    }
+
+    access_token = tokenData.access_token;  // Access-Token immer aktualisieren
     const expiresInMs = tokenData.expires_in * 1000;
     const safetyMargin = 10 * 60 * 1000; // 10 Minuten Sicherheitsmarge
     refreshInMs = Math.max(expiresInMs - safetyMargin, 0); 
     start_time = Date.now();
-    setTimeout(refreshAccessToken, refreshInMs);
+
+    // Vorherigen Timer löschen, falls vorhanden
+    if (refreshTokenTimer) {
+        clearTimeout(refreshTokenTimer);
+        console.log('Vorheriger Refresh-Token-Timer gelöscht.');
+    }
+
+    refreshTokenTimer = setTimeout(refreshAccessToken, refreshInMs);
+    console.log('Neuer Timer für Token-Refresh gesetzt:', refreshInMs);
 }
 
 async function refreshAccessToken() {
     const rt = refresh_token;
+
+    // Wenn kein refresh_token vorhanden ist, Fehler behandeln
+    if (!rt) {
+        console.error('Kein gültiger Refresh-Token vorhanden. Authentifizierung ist erforderlich.');
+        return;
+    }
+
     const authOptions = {
         method: 'POST',
         url: 'https://accounts.spotify.com/api/token',
@@ -121,6 +142,7 @@ async function refreshAccessToken() {
         access_token = response.data.access_token;
         console.log('Neues Access Token erhalten:', access_token);
 
+        // Falls ein neuer Refresh-Token zurückgegeben wird, speichern
         if (response.data.refresh_token) {
             refresh_token = response.data.refresh_token;
             console.log('Neuer Refresh Token erhalten:', refresh_token);
@@ -128,8 +150,8 @@ async function refreshAccessToken() {
             console.log('Kein neuer Refresh Token zurückgegeben.');
         }
 
+        // Neuen Timer setzen
         scheduleTokenRefresh(response.data);
-        console.log('Neuer Timer für Token-Refresh gesetzt.');
     } catch (error) {
         console.log('Error refreshing access token:', error);
         return null;
@@ -152,7 +174,7 @@ async function searchForTrack(query) {
 
         const response = await axios({
             method: 'get',
-            url: `https://api.spotify.com/v1/search?q=${encodeURIComponent(searchString)}&type=track&market=DE&limit=5&offset=0`,
+            url: `https://api.spotify.com/v1/search?q=${encodeURIComponent(searchString)}&type=track,album&market=DE&limit=5&offset=0`,
             headers: {
                 Authorization: `Bearer ${access_token}`
             }
@@ -216,10 +238,12 @@ function getRemainingTime() {
 }
 
 async function getCurrentTrack() {
+    
     if(songProof != ''){
+        
         console.log(songProof);
-    }
-    try {    
+
+    }try {    
         await ensureAccessToken();
         const response = await axios.get('https://api.spotify.com/v1/me/player/currently-playing', {
             headers: {
@@ -228,9 +252,14 @@ async function getCurrentTrack() {
         });
 
         const currentlyPlaying = response.data.item;
+        
         if (!currentlyPlaying) {
+            
+            let cmd = 'notPlaying';
+            let trackInfo = 'Es wird derzeit nichts abgespielt.';
             console.log('NO PLAYING NOTHING!');
-            return 'Es wird derzeit nichts abgespielt.';
+            return {cmd,trackInfo};
+
         }
 
         const trackName = currentlyPlaying.name;
@@ -287,11 +316,12 @@ async function getCurrentTrack() {
         return 'Es gab ein Problem beim Abrufen der letzten Wiedergabe.';
     }
 }
+
 async function getTrackById(trackId) {
     try {
         const trackData = await axios({
             method: 'get',
-            url: `https://api.spotify.com/v1/tracks/${trackId}`,
+            url: `https://api.spotify.com/v1/tracks/${trackId}?market=DE`,
             headers: {
                 Authorization: `Bearer ${access_token}`
             }

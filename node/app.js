@@ -1,39 +1,39 @@
 import dotenv from 'dotenv';
-import axios from 'axios';
-import bcrypt from 'bcrypt';
 import WebSocket from 'ws';
 import tmi from 'tmi.js';
 import Poker from './bot_modules/poker.js';
-import { randomNumber, getUserInfo, getFollowDate, getTwitchBearerToken } from './bot_modules/helper.js';
 import * as helper from './bot_modules/helper.js';
 import * as twitch from './bot_modules/twitch.js';
 import * as spotify from './bot_modules/spotify.js';
 import https from 'https';
 import http from 'http';
-import url from 'url';
 import fs from 'fs';
 import sql from 'mssql';
-import { error } from 'console';
 
 dotenv.config();
- 
-const authConfig = {
-    user: 'sa',
-    password: 'K4ff33p0tt.',
-    server: 'rubizockt.de',
-    database: 'rzde',
-    options: {
-        encrypt: true, // For Azure SQL Database
-        trustServerCertificate: true // Change to false for production
-    }
-};
+
+let aktiveAnmeldungen = new Map();
+let pokerEndTime = Date.now();
+let socketClient;
+let activeWsClients = [];
+
 
 /** Express für API **/
 const express = (await import('express')).default;
 const app = express();
 const port = 3000;
-const overlayAuth = process.env.OVERLAY_SECRET;
 
+const overlayAuth = process.env.OVERLAY_SECRET;
+const authConfig = {
+    user: process.env.DB_USER,
+    password: process.env.DB_SECRET,
+    server: 'rubizockt.de',
+    database: process.env.DB_NAME,
+    options: {
+        encrypt: true, // For Azure SQL Database
+        trustServerCertificate: true // Change to false for production
+    }
+};
 // Middleware zum Parsen von JSON-Daten
 app.use(express.json());
 
@@ -44,8 +44,6 @@ const options = {
     key: fs.readFileSync('./ssl/privkey.pem'),
     cert: fs.readFileSync('./ssl/fullchain.pem')
 };
-
-const httpsServer = https.createServer(options, app);
 
 const twitchConfig = {
     options: {
@@ -61,271 +59,272 @@ const twitchConfig = {
     channels: ['rubizockt']
 };
 
-const client = new tmi.client(twitchConfig);
 
 const videoCommands = {
-    '!15000volt': '15000volt.webm',
-    '!1700mark': '1700mark.webm',
-    '!2000later': '2000later.webm',
-    '!antworten': 'antworten.webm',
-    '!archbtw': 'archbtw.webm',
-    '!atemlos': 'breathtaking.webm',
-    '!bathroom': 'bathroom.webm',
-    '!binichdabei': 'binichdabei.webm',
-    '!bluescreen': 'bluescreen.webm',
-    '!boom': 'boom.webm',
-    '!camping': 'camper.webm',
-    '!cat': 'cat.webm',
-    '!chicks': 'chicks.webm',
-    '!cringe': 'cringe.webm',
-    '!crowdstrike': 'crowdstrike.webm',
-    '!dds': 'dds.webm',
-    '!diegrünen': 'diegrünen.webm',
-    '!disconnect': 'disconnect.webm',
-    '!drei': 'drei.webm',
-    '!eier': 'eier.webm',
-    '!ente': 'ente.webm',
-    '!fax': 'fax.webm',
-    '!feuer': 'fire.webm',
-    '!freshavocado': 'freshavocado.webm',
-    '!gefahr': 'gefahr.webm',
-    '!geringverdiener': 'geringverdiener.webm',
-    '!goat': 'goat.webm',
-    '!groovy': 'groovy.webm',
-    '!hahaschwanz': 'hahaschwanz.webm',
-    '!hase': 'hase.webm',
-    '!highscore': 'highscore.webm',
-    '!isso': 'isso.webm',
-    '!kristellmett': 'kristellmett.webm',
-    '!keininstrument': 'keininstrument.webm',
-    '!lametta': 'lametta.webm',
-    '!later': 'later.webm',
-    '!macke': 'macke.webm',
-    '!megalangweilig': 'megalangweilig.webm',
-    '!megaboom': 'megaboom.webm',
-    '!megaburp': 'megaburp.webm',
-    '!mindblown': 'mindblown.webm',
-    '!nachhause': 'nachhause.webm',
-    '!ninja': 'ninja.webm',
-    '!nice': 'nice.webm',
-    '!nein': 'nein.webm',
-    '!ohgott': 'ohgott.webm',
-    '!ouha': 'ouha.webm',
-    '!plan': 'plan.webm',
-    '!pikatwerk': 'pikatwerk.webm',
-    '!preis': 'preis.webm',
-    '!radar': 'radar.webm',
-    '!rage': 'rage.webm',
-    '!ratedw': 'ratedw.webm',
-    '!schabernack': 'schabernack.webm',
-    '!sheeshdigga': 'sheeshdigga.webm',
-    '!sheeshmittwoch': 'sheeshmittwoch.webm',
-    '!smash': 'smash.webm',
-    '!stop': 'stop.webm',
-    '!sos': 'sos.webm',
-    '!stimm': 'stimm.webm',
-    '!stimme': 'stimme.webm',
-    '!sun': 'sun.webm',
-    '!super': 'super.webm',
-    '!tastadatur': 'tastadatur.webm',
-    '!tastethesun': 'tastethesun.webm',
-    '!technikstreams': 'technikstreams.webm',
-    '!tos': 'tos.webm',
-    '!unverzueglich': 'unverzueglich.webm',
-    '!verwaehlung': 'verwaehlung.webm',
-    '!verwaltung': 'verwaltung.webm',
-    '!wasted': 'wasted.webm',
-    '!what': 'what.webm',
-    '!why': 'why.webm',
-    '!windofs': 'windofs.webm',
-    '!wissen': 'wissen.webm',
-    '!wtf': 'wtf.webm',
-    '!xbox': 'xbox.webm'
+    '!15000volt': '15000volt',
+    '!1700mark': '1700mark',
+    '!2000later': '2000later',
+    '!antworten': 'antworten',
+    '!archbtw': 'archbtw',
+    '!atemlos': 'breathtaking',
+    '!bathroom': 'bathroom',
+    '!binichdabei': 'binichdabei',
+    '!bluescreen': 'bluescreen',
+    '!boom': 'boom',
+    '!camping': 'camper',
+    '!cat': 'cat',
+    '!chicks': 'chicks',
+    '!cringe': 'cringe',
+    '!crowdstrike': 'crowdstrike',
+    '!dds': 'dds',
+    '!diegrünen': 'diegrünen',
+    '!disconnect': 'disconnect',
+    '!drei': 'drei',
+    '!eier': 'eier',
+    '!ente': 'ente',
+    '!eww': 'eww',
+    '!fax': 'fax',
+    '!feuer': 'fire',
+    '!freshavocado': 'freshavocado',
+    '!gefahr': 'gefahr',
+    '!geringverdiener': 'geringverdiener',
+    '!goat': 'goat',
+    '!groovy': 'groovy',
+    '!hahaschwanz': 'hahaschwanz',
+    '!hase': 'hase',
+    '!highscore': 'highscore',
+    '!isso': 'isso',
+    '!kristellmett': 'kristellmett',
+    '!keininstrument': 'keininstrument',
+    '!lametta': 'lametta',
+    '!later': 'later',
+    '!macke': 'macke',
+    '!megalangweilig': 'megalangweilig',
+    '!megaboom': 'megaboom',
+    '!megaburp': 'megaburp',
+    '!mindblown': 'mindblown',
+    '!nachhause': 'nachhause',
+    '!ninja': 'ninja',
+    '!nice': 'nice',
+    '!nein': 'nein',
+    '!noo' : 'noo',
+    '!ohgott': 'ohgott',
+    '!ok': 'ok',
+    '!ouha': 'ouha',
+    '!plan': 'plan',
+    '!pikatwerk': 'pikatwerk',
+    '!preis': 'preis',
+    '!radar': 'radar',
+    '!rage': 'rage',
+    '!ratedw': 'ratedw',
+    '!schabernack': 'schabernack',
+    '!sheeshdigga': 'sheeshdigga',
+    '!sheeshmittwoch': 'sheeshmittwoch',
+    '!smash': 'smash',
+    '!stop': 'stop',
+    '!sos': 'sos',
+    '!stimm': 'stimm',
+    '!stimme': 'stimme',
+    '!sun': 'sun',
+    '!super': 'super',
+    '!tastadatur': 'tastadatur',
+    '!tastethesun': 'tastethesun',
+    '!technikstreams': 'technikstreams',
+    '!tos': 'tos',
+    '!unverzueglich': 'unverzueglich',
+    '!verwaehlung': 'verwaehlung',
+    '!verwaltung': 'verwaltung',
+    '!wasted': 'wasted',
+    '!what': 'what',
+    '!why': 'why',
+    '!windofs': 'windofs',
+    '!wissen': 'wissen',
+    '!wtf': 'wtf',
+    '!xbox': 'xbox'
 };
 
 const audioCommands = {
-    '!200puls':"200puls.mp3",
-    '!achtung':"achtung.mp3",
-    '!ahshit':"ahshit.mp3",
-    '!alarm':"alarm.mp3",
-    '!alexa':"alexa.mp3",
-    '!amrad':"amrad.mp3",
-    '!arrogant':"arrogant.mp3",
-    '!babam':"babam.mp3",
-    '!baeh':"baeh.mp3",
-    '!banned':"banned.mp3",
-    '!beckenrand':"beckenrand.mp3",
-    '!belastend':"belastend.mp3",
-    '!berndruhe':"berndruhe.mp3",
-    '!biele':"biele.mp3",
-    '!bleibtso':"bleibtso.mp3",
-    '!bloed':"bloed.mp3",
-    '!bluetooth':"bluetooth.mp3",
-    '!bock':"bock.mp3",
-    '!bombe':"bombe.mp3",
-    '!bonk':"bonk.mp3",
-    '!burp':"burp.mp3",
-    '!bzzt':"bzzt.mp3",
-    '!chirp':"chirp.mp3",
-    '!cmake':"cmake.mp3",
-    '!coin':"coin.mp3",
-    '!cookie':"cookie.mp3",
-    '!cyberbacher':"cyberbacher.mp3",
-    '!dasistgeil':"dasistgeil.mp3",
-    '!dc':"dc.mp3",
-    '!dergeht':"dergeht.mp3",
-    '!deutlich':"deutlich.mp3",
-    '!diagnose':"diagnose.mp3",
-    '!dickmove':"dickmove.mp3",
-    '!dingdong':"dingdong.mp3",
-    '!dogshit':"dogshit.mp3",
-    '!drogenfahndung':"drogenfahndung.mp3",
-    '!dumm':"dumm.mp3",
-    '!dusollstatmen':"dusollstatmen.mp3",
-    '!eeeeeee':"eeeeee.mp3",
-    '!eigenleben':"eigenleben.mp3",
-    '!erdbeerkäse':"erdbeerkäse.mp3",
-    '!erika':"erika.mp3",
-    '!eyey':"eyey.mp3",
-    '!fail':"fail.mp3",
-    '!falscheentscheidung':"falscheentscheidung.mp3",
-    '!fart':"fart.mp3",
-    '!fbi':"fbi.mp3",
-    '!fettbemmen':"fettbemmen.mp3",
-    '!fetzig':"fetzig.mp3",
-    '!fia':"fia.mp3",
-    '!fickerberg':"fickerberg.mp3",
-    '!gefallen':"gefallen.mp3",
-    '!gege':"gege.mp3",
-    '!geier':"geier.mp3",
-    '!gewitter':"gewitter.mp3",
-    '!gibsmir':"gibsmir.mp3",
-    '!gigi':"gigi.mp3",
-    '!gurke':"gurke.mp3",
-    '!hallo':"hallo.mp3",
-    '!happybirthday':"happybirthday.mp3",
-    '!heim':"heim.mp3",
-    '!heiss':"heiss.mp3",
-    '!hellodaddy':"hellodaddy.mp3",
-    '!heulleise':"heulleise.mp3",
-    '!hilfe':"hilfe.mp3",
-    '!hodensack':"hodensack.mp3",
-    '!horn':"horn.mp3",
-    '!howdareyou':"howdareyou.mp3",
-    '!hunger':"hunger.mp3",
-    '!hurz':"hurz.mp3",
-    '!ichbinreich':"ichbinreich.mp3",
-    '!icq':"icq.mp3",
-    '!immerdiesegurken':"immerdiesegurken.mp3",
-    '!indertat':"indertat.mp3",
-    '!internet':"internet.mp3",
-    '!irre':"irre.mp3",
-    '!javapeek':"javapeek.mp3",
-    '!jfpeek':"jfpeek.mp3",
-    '!jo':"jo.mp3",
-    '!kabelmaus':"kabelmaus.mp3",
-    '!kaching':"kaching.mp3",
-    '!kacken':"kacken.mp3",
-    '!kaiuwe':"kaiuwe.mp3",
-    '!kammamamachen':"kammamamachen.mp3",
-    '!kassette':"kassette.mp3",
-    '!klapse':"klapse.mp3",
-    '!knock':"knock.mp3",
-    '!komisch':"komisch.mp3",
-    '!kranplätze':"kranplätze.mp3",
-    '!langweilig':"langweilig.mp3",
-    '!leviosa':"leviosa.mp3",
-    '!lieferung':"lieferung.mp3",
-    '!life':"life.mp3",
-    '!listen':"listen.mp3",
-    '!lknock':"lknock.mp3",
-    '!luegen':"lügen.mp3",
-    '!machhinne':"machhinne.mp3",
-    '!miez':"miez.mp3",
-    '!miregal':"miregal.mp3",
-    '!mlem':"mlem.mp3",
-    '!muhaha':"muhaha.mp3",
-    '!mussraus':"mussraus.mp3",
-    '!mypenis':"mypenis.mp3",
-    '!natuerlich':"natuerlich.mp3",
-    '!nebenrisiken':"nebenrisiken.mp3",
-    '!neee':"neee.mp3",
-    '!nerf':"nerf.mp3",
-    '!newdevice':"newdevice.mp3",
-    '!nichtlesen':"nichtlesen.mp3",
-    '!nom':"nom.mp3",
-    '!numpad':"numpad.mp3",
-    '!okgurke':"okgurke.mp3",
-    '!onoff':"onoff.mp3",
-    '!ostdeutsch':"ostdeutsch.mp3",
-    '!over9000':"over9000.mp3",
-    '!ovpn':"ovpn.mp3",
-    '!pain':"pain.mp3",
-    '!penisistpenis':"penisistpenis.mp3",
-    '!pfu':"pfu.mp3",
-    '!ping':"ping.mp3",
-    '!powerlevel':"powerlevel.mp3",
-    '!prickelnd':"prickelnd.mp3",
-    '!prima':"prima.mp3",
-    '!prost':"prost.mp3",
-    '!pun':"pun.mp3",
-    '!purge':"purge.mp3",
-    '!quack':"quack.mp3",
-    '!quak':"quak.mp3",
-    '!regal':"regal.mp3",
-    '!russencyber':"russencyber.mp3",
-    '!rustikal':"rustikal.mp3",
-    '!sabbelnich':"sabbelnich.mp3",
-    '!samen':"samen.mp3",
-    '!schaffen':"schaffen.mp3",
-    '!scheissding':"scheissding.mp3",
-    '!scheissemitscheisse':"scheissemitscheisse.mp3",
-    '!schienenersatzverkehr':"schienenersatzverkehr.mp3",
-    '!schlag':"schlag.mp3",
-    '!shame':"shame.mp3",
-    '!shutdown':"shutdown.mp3",
-    '!shutup':"shutup.mp3",
-    '!sketchyshit':"sketchyshit.mp3",
-    '!sleepmode':"sleepmode.mp3",
-    '!startup':"startup.mp3",
-    '!subbomb':"subbomb.mp3",
-    '!superhot':"superhot.mp3",
-    '!sus':"sus.mp3",
-    '!svpn':"svpn.mp3",
-    '!teams':"teams.mp3",
-    '!telegram':"telegram.mp3",
-    '!theone':"theone.mp3",
-    '!tief':"tief.mp3",
-    '!toasty':"toasty.mp3",
-    '!tolleswort':"tolleswort.mp3",
-    '!tralala':"tralala.mp3",
-    '!trinken':"trinken.mp3",
-    '!uhtini':"uhtini.mp3",
-    '!usb':"usb.mp3",
-    '!uwop':"uwop.mp3",
-    '!viecher':"viecher.mp3",
-    '!visca':"visca.mp3",
-    '!voicejoin':"voicejoin.mp3",
-    '!vorwärts':"vorwärts.mp3",
-    '!vpn':"vpn.mp3",
-    '!wakeup':"wakeup.mp3",
-    '!waruumääh':"waruumääh.mp3",
-    '!washierlos':"washierlos.mp3",
-    '!wasmachen':"wasmachen.mp3",
-    '!water':"water.mp3",
-    '!waweb':"waweb.mp3",
-    '!wetfart':"wetfart.mp3",
-    '!whip':"whip.mp3",
-    '!willnichtmehr':"willnichtmehr.mp3",
-    '!winamp':"winamp.mp3",
-    '!wow':"wow.mp3",
-    '!wvpn':"wvpn.mp3",
-    '!wwm':"wwm.mp3",
-    '!yay':"yay.mp3",
-    '!zerstörer':"zerstörer.mp3",
-    '!zombie':"zombie.mp3",
-    '!zweischoppe':"zweischoppe.mp3",
-    '!zonk':"zonk.mp3"
+    '!200puls':"200puls",
+    '!achtung':"achtung",
+    '!ahshit':"ahshit",
+    '!alarm':"alarm",
+    '!alexa':"alexa",
+    '!amrad':"amrad",
+    '!arrogant':"arrogant",
+    '!babam':"babam",
+    '!baeh':"baeh",
+    '!banned':"banned",
+    '!beckenrand':"beckenrand",
+    '!belastend':"belastend",
+    '!berndruhe':"berndruhe",
+    '!biele':"biele",
+    '!bleibtso':"bleibtso",
+    '!bloed':"bloed",
+    '!bluetooth':"bluetooth",
+    '!bock':"bock",
+    '!bombe':"bombe",
+    '!bonk':"bonk",
+    '!burp':"burp",
+    '!bzzt':"bzzt",
+    '!chirp':"chirp",
+    '!cmake':"cmake",
+    '!coin':"coin",
+    '!cookie':"cookie",
+    '!cyberbacher':"cyberbacher",
+    '!dasistgeil':"dasistgeil",
+    '!dc':"dc",
+    '!dergeht':"dergeht",
+    '!deutlich':"deutlich",
+    '!diagnose':"diagnose",
+    '!dickmove':"dickmove",
+    '!dingdong':"dingdong",
+    '!dogshit':"dogshit",
+    '!drogenfahndung':"drogenfahndung",
+    '!dumm':"dumm",
+    '!dusollstatmen':"dusollstatmen",
+    '!eeeeeee':"eeeeee",
+    '!eigenleben':"eigenleben",
+    '!erdbeerkäse':"erdbeerkäse",
+    '!erika':"erika",
+    '!eyey':"eyey",
+    '!fail':"fail",
+    '!falscheentscheidung':"falscheentscheidung",
+    '!fart':"fart",
+    '!fbi':"fbi",
+    '!fettbemmen':"fettbemmen",
+    '!fetzig':"fetzig",
+    '!fia':"fia",
+    '!fickerberg':"fickerberg",
+    '!gefallen':"gefallen",
+    '!gege':"gege",
+    '!geier':"geier",
+    '!gewitter':"gewitter",
+    '!gibsmir':"gibsmir",
+    '!gigi':"gigi",
+    '!gurke':"gurke",
+    '!hallo':"hallo",
+    '!happybirthday':"happybirthday",
+    '!heim':"heim",
+    '!heiss':"heiss",
+    '!hellodaddy':"hellodaddy",
+    '!heulleise':"heulleise",
+    '!hilfe':"hilfe",
+    '!hodensack':"hodensack",
+    '!horn':"horn",
+    '!howdareyou':"howdareyou",
+    '!hunger':"hunger",
+    '!hurz':"hurz",
+    '!ichbinreich':"ichbinreich",
+    '!icq':"icq",
+    '!immerdiesegurken':"immerdiesegurken",
+    '!indertat':"indertat",
+    '!internet':"internet",
+    '!irre':"irre",
+    '!javapeek':"javapeek",
+    '!jfpeek':"jfpeek",
+    '!jo':"jo",
+    '!kabelmaus':"kabelmaus",
+    '!kaching':"kaching",
+    '!kacken':"kacken",
+    '!kaiuwe':"kaiuwe",
+    '!kammamamachen':"kammamamachen",
+    '!kassette':"kassette",
+    '!klapse':"klapse",
+    '!knock':"knock",
+    '!komisch':"komisch",
+    '!kranplätze':"kranplätze",
+    '!langweilig':"langweilig",
+    '!leviosa':"leviosa",
+    '!lieferung':"lieferung",
+    '!life':"life",
+    '!listen':"listen",
+    '!luegen':"lügen",
+    '!machhinne':"machhinne",
+    '!miez':"miez",
+    '!miregal':"miregal",
+    '!mlem':"mlem",
+    '!muhaha':"muhaha",
+    '!mussraus':"mussraus",
+    '!mypenis':"mypenis",
+    '!natuerlich':"natuerlich",
+    '!nebenrisiken':"nebenrisiken",
+    '!neee':"neee",
+    '!nerf':"nerf",
+    '!newdevice':"newdevice",
+    '!nichtlesen':"nichtlesen",
+    '!nom':"nom",
+    '!numpad':"numpad",
+    '!okgurke':"okgurke",
+    '!onoff':"onoff",
+    '!ostdeutsch':"ostdeutsch",
+    '!over9000':"over9000",
+    '!ovpn':"ovpn",
+    '!pain':"pain",
+    '!penisistpenis':"penisistpenis",
+    '!pfu':"pfu",
+    '!ping':"ping",
+    '!powerlevel':"powerlevel",
+    '!prickelnd':"prickelnd",
+    '!prima':"prima",
+    '!prost':"prost",
+    '!pun':"pun",
+    '!purge':"purge",
+    '!quack':"quack",
+    '!quak':"quak",
+    '!regal':"regal",
+    '!russencyber':"russencyber",
+    '!rustikal':"rustikal",
+    '!sabbelnich':"sabbelnich",
+    '!samen':"samen",
+    '!schaffen':"schaffen",
+    '!scheissding':"scheissding",
+    '!scheissemitscheisse':"scheissemitscheisse",
+    '!schienenersatzverkehr':"schienenersatzverkehr",
+    '!schlag':"schlag",
+    '!shame':"shame",
+    '!shutdown':"shutdown",
+    '!shutup':"shutup",
+    '!sketchyshit':"sketchyshit",
+    '!sleepmode':"sleepmode",
+    '!startup':"startup",
+    '!subbomb':"subbomb",
+    '!superhot':"superhot",
+    '!sus':"sus",
+    '!svpn':"svpn",
+    '!teams':"teams",
+    '!telegram':"telegram",
+    '!theone':"theone",
+    '!tief':"tief",
+    '!toasty':"toasty",
+    '!tolleswort':"tolleswort",
+    '!tralala':"tralala",
+    '!trinken':"trinken",
+    '!uhtini':"uhtini",
+    '!usb':"usb",
+    '!uwop':"uwop",
+    '!viecher':"viecher",
+    '!visca':"visca",
+    '!voicejoin':"voicejoin",
+    '!vorwärts':"vorwärts",
+    '!vpn':"vpn",
+    '!wakeup':"wakeup",
+    '!waruumääh':"waruumääh",
+    '!washierlos':"washierlos",
+    '!wasmachen':"wasmachen",
+    '!water':"water",
+    '!waweb':"waweb",
+    '!wetfart':"wetfart",
+    '!whip':"whip",
+    '!willnichtmehr':"willnichtmehr",
+    '!winamp':"winamp",
+    '!wow':"wow",
+    '!wvpn':"wvpn",
+    '!wwm':"wwm",
+    '!yay':"yay",
+    '!zerstörer':"zerstörer",
+    '!zombie':"zombie",
+    '!zweischoppe':"zweischoppe",
+    '!zonk':"zonk"
 };
 
 const videoTrigger = {
@@ -345,19 +344,15 @@ const emoteTrigger = {
     'rubizo420' : 'emo_rubizo420',
 }
 
-let access_token = '';
-let refresh_token = '';
-let aktiveAnmeldungen = new Map();
-let pokerEndTime = Date.now();
-let socketClient;
-let activeWsClients = [];
-
-/** Websocket für weiterleitung an andere Dienste  **/
+const client = new tmi.client(twitchConfig);
+const httpsServer = https.createServer(options, app);
 const wss = new WebSocket.Server({ server: httpsServer });
+
+
 
 function sendAll (message) {
     for (var i=0; i<activeWsClients.length; i++) {
-        activeWsClients[i].send(message);
+        activeWsClients[i].send(JSON.stringify(message));
     }
 }
 
@@ -556,13 +551,14 @@ app.get('/twitch/subscribe', async(req, res) => {
     req.end();
 });
 /** OVERLAY - CONTROL */
-app.get('/overlay/control/:command', (req, res) => {
-    const { command } = req.params;
-    const { code } = req.query;
-
-    if (code === overlayAuth) {
+app.post('/overlay/control/command', (req, res) => {
+    const { cmd, message, auth } = req.body;
+    const overlayAuth = process.env.OVERLAY_SECRET;
+    
+    if (auth === overlayAuth) {
         if(socketClient){
-            sendAll(command);
+            console.log(message);
+            sendAll({"cmd":"trigger","triggerName": message });
         } else {
             console.log("No Client");
         }
@@ -757,27 +753,29 @@ client.on('chat', async (channel, user, message, self) => {
         if (command === '!whisperme'){
             client.whisper(user.username, "Na du schelm? Gefaellt dir das?");
         }
+        
         if (command === '!refresh_timer'){
             let remainingTimeMs = spotify.getRemainingTime();
             console.log('Remanining Time: '+ remainingTimeMs );
         }
+        
         if (command === '!active_cliets'){
             console.log(activeWsClients);
         }
 
-
         /** OVERLAY - TRIGGER */
         if (videoCommands[command]) {
+            console.log("Trigger erkannt: ", command);
             // Nur den Dateinamen senden
             const videoFile = videoCommands[command];
             if(activeWsClients != [] ){
-                sendAll(videoFile);
+                sendAll({"cmd":"trigger", "triggerName":videoFile});
             }
         } else if (audioCommands[command]) {
             // Nur den Dateinamen senden
             const audioFile = audioCommands[command];
             if(activeWsClients != [] ){
-                sendAll(audioFile);
+                sendAll({"cmd":"trigger", "triggerName":audioFile});
             }
         } 
     }
@@ -793,7 +791,7 @@ client.on('chat', async (channel, user, message, self) => {
             console.log('TRIGGER GEFUNDEN: ', trigger);
             console.log('KEYWORD WIRD GESENDET: ', keyword);
             if(activeWsClients != [] ){
-                sendAll(keyword);
+                sendAll({"cmd":"trigger", "triggerName": keyword});
             }; // Beende die Schleife nach dem ersten gefundenen Trigger
         }
     }
@@ -805,7 +803,7 @@ client.on('chat', async (channel, user, message, self) => {
             console.log(`KEYWORD WIRD GESENDET: ${keyword} (${occurrences} Mal)`);
             if(activeWsClients != [] ){
                 for (let i = 0; i < occurrences; i++) {
-                    sendAll(keyword);
+                    sendAll({"cmd":"trigger", "triggerName":keyword});
                 }
             }
         }
@@ -818,7 +816,11 @@ httpsServer.listen(port, () => {
         
         const track = await spotify.getCurrentTrack();
         
-        if (track) {
+        if (track.cmd  == 'notPlaying'){
+            
+            sendAll(track);
+
+        }else if (track) {
             const currentTrackJson = '/app/views/spotify/info/current_track.json';
 
             let existingTrack = null;
@@ -829,7 +831,7 @@ httpsServer.listen(port, () => {
             }
             if (JSON.stringify(existingTrack.trackName) !== JSON.stringify(track.trackName)) {
 
-                sendAll(`{"cmd":"trackUpdate", "trackInfo": ${JSON.stringify(track)}}`);
+                sendAll({"cmd":"trackUpdate", "trackInfo": track });
                 fs.writeFileSync(currentTrackJson, JSON.stringify({ track: track }));
                 console.log(`Aktueller Song aktualisiert: ${JSON.stringify(track)}`);
             } else {
