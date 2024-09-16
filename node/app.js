@@ -618,7 +618,7 @@ client.on('chat', async (channel, user, message, self) => {
 
         if (command === '!songinfo') {
             try {
-                let { trackName, artistNames } = await getLastPlayed();
+                let { trackName, artistNames } = await spotify.getCurrentTrack();
                 console.log("title: ", trackName);
                 console.log("artist: ", artistNames);
                 client.say(channel, `Ihr hört ${trackName} von ${artistNames}.`);
