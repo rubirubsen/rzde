@@ -86,6 +86,10 @@ if(isset($_GET['uid'])) {
             // WebSocket-Ereignis: Nachricht empfangen
                 socket.onmessage = function(event) {
                     
+                    if (event.data === 'ping') {
+                        socket.send('pong');  // Sende Pong zurück
+                    }
+
                     let message = event.data;
                     console.log('Empfangene Nachricht: ', message);
 
@@ -412,6 +416,8 @@ if(isset($_GET['uid'])) {
                                 break;  // Falls nur ein Command behandelt werden soll
                             }
                         }
+                    }else if (message.cmd === 'overlayAction'){
+                        
                     }
                 };
             

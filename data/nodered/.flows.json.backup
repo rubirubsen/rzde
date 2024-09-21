@@ -1,0 +1,117 @@
+[
+    {
+        "id": "bb6760b8be0dae4b",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "59ff2a1.fa600d4",
+        "type": "http in",
+        "z": "bb6760b8be0dae4b",
+        "name": "",
+        "url": "/hello",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 90,
+        "y": 140,
+        "wires": [
+            [
+                "b96e43a7dc29f6c6",
+                "3551d8c95c642085",
+                "b7c2d11be02002b1"
+            ]
+        ]
+    },
+    {
+        "id": "266c286f.d993d8",
+        "type": "http response",
+        "z": "bb6760b8be0dae4b",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 870,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "1640486b2eafca2b",
+        "type": "template",
+        "z": "bb6760b8be0dae4b",
+        "name": "test",
+        "field": "payload",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "This is the payload: {{payload}} !",
+        "output": "str",
+        "x": 640,
+        "y": 760,
+        "wires": [
+            [
+                "266c286f.d993d8"
+            ]
+        ]
+    },
+    {
+        "id": "b96e43a7dc29f6c6",
+        "type": "function",
+        "z": "bb6760b8be0dae4b",
+        "name": "function 1",
+        "func": "msg.payload = JSON.stringify(msg.payload);\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 620,
+        "wires": [
+            [
+                "1640486b2eafca2b"
+            ]
+        ]
+    },
+    {
+        "id": "3551d8c95c642085",
+        "type": "debug",
+        "z": "bb6760b8be0dae4b",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 690,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "b7c2d11be02002b1",
+        "type": "ui_led",
+        "z": "bb6760b8be0dae4b",
+        "d": true,
+        "order": 0,
+        "group": "ui_group",
+        "width": 0,
+        "height": 0,
+        "label": "",
+        "labelPlacement": "left",
+        "labelAlignment": "left",
+        "colorForValue": [],
+        "allowColorForValueInMessage": false,
+        "shape": "circle",
+        "showGlow": true,
+        "name": "",
+        "x": 590,
+        "y": 140,
+        "wires": []
+    }
+]

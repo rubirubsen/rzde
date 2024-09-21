@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 import WebSocket from 'ws';
 import tmi from 'tmi.js';
 import Poker from './bot_modules/poker.js';
@@ -351,30 +352,50 @@ const wss = new WebSocket.Server({ server: httpsServer });
 
 
 function sendAll (message) {
-    for (var i=0; i<activeWsClients.length; i++) {
-        activeWsClients[i].send(JSON.stringify(message));
+    for (let i = 0; i < activeWsClients.length; i++) {
+        activeWsClients[i].ws.send(JSON.stringify(message)); // Zugriff auf ws
     }
 }
 
 wss.on('connection', function connection(ws, req) {
-    socketClient = ws;
     const parameters = new URL(req.url, `http://${req.headers.host}`);
     const uid = parameters.searchParams.get('uid');
-    if (uid == process.env.OVERLAY_SECRET) {
-        console.log(`[WS] Verbunden mit Rubi`);
+    let hash = ''
+    // IP-Adresse abrufen
+    const ip = req.socket.remoteAddress;
+
+    if (uid === process.env.OVERLAY_SECRET) {
+        console.log(`[WS] Verbunden mit Rubi von IP: ${ip}`);
+
+        // Hashen der IP-Adresse
+        hash = crypto.createHash('sha256').update(ip).digest('hex');
+        ws.id = hash;  // Setze die ID auf den Hash der IP-Adresse
     } else {
         ws.close();
+        return;
     }
 
-    activeWsClients.push(socketClient);
-    
+    activeWsClients.push({ id: hash, ws });
+
+    ws.isAlive = true;
+    ws.on('pong', () => ws.isAlive = true);
 
     ws.on('close', () => {
         console.log(`+++ WSS CLOSED +++`);
-        console.log('WebSocket-Verbindung geschlossen');
-        activeWsClients = activeWsClients.filter(client => client !== socketClient);
+        activeWsClients = activeWsClients.filter(client => client.id !== hash);
     });
 });
+
+// Ping-Interval einrichten
+const interval = setInterval(() => {
+    wss.clients.forEach(client => {
+        if (client.isAlive === false) {
+            return client.terminate();  // Verbindung wird geschlossen, wenn sie inaktiv ist
+        }
+        client.isAlive = false;
+        client.ping();  // Sende einen Ping
+    });
+}, 30000);  // Alle 30 Sekunden
 
 /** Routen-Defintionen für Spotify-Auth **/
 app.get('/spotify/login', (req, res) => {
@@ -498,12 +519,15 @@ app.get('/', (req, res) => {
 
 /** Twitch - Bot **/
 app.get('/twitch/login', async(req,res) => {
-    twitch.twitchLogin(twitchConfig,req,res);
+    twitch.twitchLogin(req,res);
 });
 
-app.get('/twitch/callback', async(req, res) => {
-    console.log(res);
-    res.send("Twitch-Login succesfull!")
+app.get('/twitch/callback', async (req, res) => {
+    const { code, scope, state } = req.query;
+    twitch.twitchCallback(code, scope, state, req, res);
+    // Hier kannst du die erhaltenen Parameter weiterverarbeiten
+
+    res.send("Twitch-Login erfolgreich!");
 });
 
 app.get('/twitch/subscribe', async(req, res) => {
@@ -762,7 +786,9 @@ client.on('chat', async (channel, user, message, self) => {
         if (command === '!active_cliets'){
             console.log(activeWsClients);
         }
-
+        if (command === '!setgame'){
+            
+        }
         /** OVERLAY - TRIGGER */
         if (videoCommands[command]) {
             console.log("Trigger erkannt: ", command);
