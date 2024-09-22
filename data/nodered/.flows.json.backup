@@ -97,7 +97,6 @@
         "id": "b7c2d11be02002b1",
         "type": "ui_led",
         "z": "bb6760b8be0dae4b",
-        "d": true,
         "order": 0,
         "group": "ui_group",
         "width": 0,

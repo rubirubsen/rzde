@@ -9,14 +9,18 @@ const clientId = process.env.TWITCHAPIUSER; // Dein Twitch Client ID hier
 const secret = process.env.TWICHAPISECRET; // Dein Twitch Secret hier
 const redirect_uri_env = process.env.TWITCH_REDIRECT_URI; // URL, zu der Twitch nach dem Login zurückkehrt
 
-
+let accessToken;
+let refreshToken;
+let expires_in;
+let state;
+let callbackState;
 
 export const twitchLogin = function(req, res) {
     const client_id = process.env.TWITCHAPIUSER; // Deine Twitch Client-ID hier
     const redirect_uri = encodeURIComponent(redirect_uri_env); // URL, zu der Twitch nach dem Login zurückkehrt
     const scope = 'channel:manage:broadcast user:read:chat'; // Beispiel-Scope, passe es nach Bedarf an
     const response_type = 'code'; // Für den Authorization Code Flow
-    const state = 'random_state_string'; // Ein zufälliger String zur Verhinderung von CSRF-Angriffen
+    state = crypto.randomBytes(20).toString('hex'); // Generiere einen zufälligen String für Auth-Zwecke
 
     const url = `https://id.twitch.tv/oauth2/authorize?response_type=${response_type}&client_id=${client_id}&redirect_uri=${redirect_uri}&scope=${scope}&state=${state}`;
     res.redirect(url);
@@ -29,7 +33,7 @@ export const twitchCallback = async function(code,scope,state, req, res) {
     twitchAuthParams.append('code', code);
     twitchAuthParams.append('grant_type', 'authorization_code');
     twitchAuthParams.append('redirect_uri', redirect_uri_env);
-    
+    callbackState = state;
     axios.post('https://id.twitch.tv/oauth2/token', twitchAuthParams)
     .then((response) => {
         /**
@@ -42,9 +46,9 @@ export const twitchCallback = async function(code,scope,state, req, res) {
             }
          */
         // Hier kannst du die Tokens aus der Response weiterverarbeiten
-        let accessToken = response.data['access_token'];
-        let refreshToken = response.data['refresh_token'];
-        let expires_in = response.data['expires_in'];
+        accessToken = response.data['access_token'];
+        refreshToken = response.data['refresh_token'];
+        expires_in = response.data['expires_in'];
 
         setInterval(() => {
             if (expires_in > 0) {
@@ -59,7 +63,7 @@ export const twitchCallback = async function(code,scope,state, req, res) {
     });
 };
 
-export async function twitchTokenRefresh(refreshToken) {
+export async function twitchTokenRefresh() {
     try {
         
         const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
@@ -99,7 +103,7 @@ async function refreshTokenFunction() {
         });
 
         accessToken = response.data.access_token;
-        expiresIn = response.data.expires_in;
+        expires_in = response.data.expires_in;
         console.log('New Access Token:', accessToken);
 
         // Hier kannst du das neue Token speichern oder verwenden

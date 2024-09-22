@@ -21,8 +21,7 @@
         "wires": [
             [
                 "b96e43a7dc29f6c6",
-                "3551d8c95c642085",
-                "b7c2d11be02002b1"
+                "3551d8c95c642085"
             ]
         ]
     },
@@ -91,26 +90,6 @@
         "statusType": "auto",
         "x": 690,
         "y": 260,
-        "wires": []
-    },
-    {
-        "id": "b7c2d11be02002b1",
-        "type": "ui_led",
-        "z": "bb6760b8be0dae4b",
-        "order": 0,
-        "group": "ui_group",
-        "width": 0,
-        "height": 0,
-        "label": "",
-        "labelPlacement": "left",
-        "labelAlignment": "left",
-        "colorForValue": [],
-        "allowColorForValueInMessage": false,
-        "shape": "circle",
-        "showGlow": true,
-        "name": "",
-        "x": 590,
-        "y": 140,
         "wires": []
     }
 ]
