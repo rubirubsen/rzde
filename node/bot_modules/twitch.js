@@ -18,7 +18,7 @@ let callbackState;
 export const twitchLogin = function(req, res) {
     const client_id = process.env.TWITCHAPIUSER; // Deine Twitch Client-ID hier
     const redirect_uri = encodeURIComponent(redirect_uri_env); // URL, zu der Twitch nach dem Login zurückkehrt
-    const scope = 'channel:manage:broadcast user:read:chat'; // Beispiel-Scope, passe es nach Bedarf an
+    const scope = 'channel:manage:broadcast user:read:chat bits:read'; // Beispiel-Scope, passe es nach Bedarf an
     const response_type = 'code'; // Für den Authorization Code Flow
     state = crypto.randomBytes(20).toString('hex'); // Generiere einen zufälligen String für Auth-Zwecke
 

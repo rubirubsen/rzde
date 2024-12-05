@@ -720,5 +720,5 @@ data/mysql/lib/mysql/performance_schema/variables_by_thr_184.sdi
 data/mysql/lib/mysql/performance_schema/variables_info_187.sdi
 data/mysql/lib/mysql/performance_schema/variables_metada_188.sdi
 data/mysql/lib/mysql/sys/sys_config.ibd
-data/nodered/settings.js
-data/nodered/settings.js
+./data/nodered/settings.js
+

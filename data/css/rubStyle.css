@@ -1,8 +1,30 @@
 @import url(https://fonts.googleapis.com/css?family=Roboto);
 
 /*Immer gültige CSS - Regeln*/
+@media (max-width: 768px) {
+    .folderOuter {
+        flex-direction: column; /* Stapele die Elemente untereinander */
+    }
+    .folderInner, .folderInnerRight {
+        width: 100%; /* Mach die inneren Elemente breiter auf kleinen Bildschirmen */
+    }
+}
 
-video, audio {
+:root {
+    --color1: rgb(0, 231, 255);
+    --color2: rgb(255, 0, 231);
+    --common1: #fac;
+    --common2: #ddccaa;
+    --rare1: #54a29e;
+    --rare2: #a79d66;
+    --uncommon1: #efb2fb;
+    --uncommon2: #acc6f8;
+    --urare1: #efb2fb;
+    --urare2: #acc6f8;
+  }
+  
+
+video {
     position: fixed;
     bottom: 10px;
     right: 10px;
@@ -11,7 +33,14 @@ video, audio {
     z-index: 1000;
 }
 
-
+audio {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: 300px;
+    height: auto;
+    z-index: 1000;
+  }
 
 span.s1 {
     position: absolute;
@@ -45,7 +74,7 @@ body {
 /* Image on the left side */
 .thumbnail {
     float: left;
-    position: relative;
+    position: absolute;
     left: 30px;
     top: -30px;
     height: 320px;
@@ -54,6 +83,7 @@ body {
     -moz-box-shadow: 10px 10px 60px 0px rgba(0, 0, 0, 0.75);
     box-shadow: 10px 10px 60px 0px rgba(0, 0, 0, 0.75);
     overflow: hidden;
+    z-index:1;
 }
 
 /*object-fit: cover;*/
@@ -192,8 +222,8 @@ th {
     margin-top: -0.2em;
     background-color: black;
     height: fit-content;
-    width: 6em;
-    z-index: 1;
+    width: 11em;
+    z-index: 4;
     position: fixed;
     border-radius: 5px;
     margin-left: 10px;
@@ -306,8 +336,7 @@ th {
     position: relative;
     height: 450px;
     width: 900px;
-    margin: auto;
-    margin-top: 60px;
+    margin: 32px auto 50px auto;
     background-color: #FFF;
     -webkit-box-shadow: 10px 10px 93px 0px rgba(0, 0, 0, 0.75);
     -moz-box-shadow: 10px 10px 93px 0px rgba(0, 0, 0, 0.75);
@@ -388,6 +417,13 @@ video {
 
 .newsTitle {
     font-weight: bolder;
+    font-size: 1.5em;
+    text-decoration: underline;
+}
+
+.newsTimestamp{
+    font-size: 0.8em;
+    font-style: italic;
 }
 
 .loginContainer {
@@ -494,4 +530,746 @@ audio {
             font-size: 0.8em;
             margin-top: 0.2em;
         }
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+}
+
+.modalContent {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 20px;
+    border-radius: 10px;
+    width: 75%;
+    position: relative;
+    top: 5%;
+    max-height: 80vh; /* Maximal 80% der Viewport-Höhe */
+    overflow-y: auto;  /* Vertikaler Scrollbalken */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.close {
+    position: absolute;
+    top: 10px; /* Abstand vom oberen Rand */
+    right: 10px; /* Abstand vom rechten Rand */
+    font-size: 30px; /* Größe des Schließen-Symbols */
+    color: black; /* Farbe des Schließen-Symbols */
+    cursor: pointer; /* Zeigt an, dass es klickbar ist */
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.folderOuter {
+    background-color: rgb(66, 33, 9);
+    background-image: url(../img/leather.png);
+    width: 85vw;
+    height: 80vh;
+    margin: 1em auto auto auto;
+    border-radius: 15px;
+    padding-top: 0.2em;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: 1fr;
+    grid-column-gap: 0px;
+    grid-row-gap: 0px; 
+}
+
+.folderInnerLeft {
+    width: 41vw;
+    height: 79.5vh;
+    margin: auto auto auto 0;
+    border-radius: 15px;
+    background-color: #f3e5ab;
+    margin: auto auto auto 1.2em;
+    border: #000 solid 1px;
+    grid-area: 1 / 1 / 2 / 3;
+}
+
+.folderInner2 {
+    width: 41vw;
+    height: 79vh;
+    margin: 0 0 auto 1px;
+    border-radius: 15px;
+    background-color: #f3e5ab;
+    border: #000 solid 1px;
+    z-index: 3;
+    position: absolute;
+}
+
+.folderInner3 {
+    width: 41vw;
+    height: 79vh;
+    margin: auto auto auto 1px;
+    border-radius: 15px;
+    background-color: #f3e5ab;
+    border: #000 solid 1px;
+    z-index: 4;
+    position: absolute;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    grid-column-gap: 5px;
+    grid-row-gap: 5px; 
+}
+
+.folderInnerRight {
+    width: 41vw;
+    height: 79.5vh;
+    margin: auto auto auto 52em;
+    border-radius: 15px;
+    background-color: #f3e5ab;
+    border: #000 solid 1px;
+    grid-area: 1 / 2 / 2 / 3;
+    z-index:2;
+    position:absolute;
+}
+
+.folderInnerRight2 {
+    width: 41vw;
+    height: 79vh;
+    margin: 0 0 auto -3px;
+    border-radius: 15px;
+    background-color: #f3e5ab;
+    border: #000 solid 1px;
+    z-index: 3;
+    position: absolute;
+}
+
+.folderInnerRight3 {
+    width: 41vw;
+    height: 79vh;
+    margin: auto auto auto -5px;
+    border-radius: 15px;
+    background-color: #f3e5ab;
+    border: #000 solid 1px;
+    z-index: 4;
+    position: absolute;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    grid-column-gap: 5px;
+    grid-row-gap: 5px;
+}
+
+.folderRing {
+    width: 7vw;
+    height: 1vh;
+    background-color: silver;
+    z-index: 6;
+    position: absolute;
+    border: 5px darkgray solid;
+    border-radius: 25px;
+    margin-left: 46.5em;
+    margin-top: 5em;
+  }
+
+  .folderRing2 {
+    width: 7vw;
+    height: 1vh;
+    background-color: silver;
+    z-index: 6;
+    position: absolute;
+    border: 5px darkgray solid;
+    border-radius: 25px;
+    margin-left: 46.5em;
+    margin-top: 20em;
+  }
+  
+  .folderRing3 {
+    width: 7vw;
+    height: 1vh;
+    background-color: silver;
+    z-index: 6;
+    position: absolute;
+    border: 5px darkgray solid;
+    border-radius: 25px;
+    margin-left: 46.5em;
+    margin-top: 35em;
+  }
+
+  .hiddenCard{
+    width:10em; 
+    height:14em; 
+    background-image:url(../img/Cardback.png);
+    margin: 0.5em 2em auto 4em;
+    border-radius: 15px;
+    grid-area: 1 / 1 / 2 / 2;
+    background-size: cover;
+    background-position: center;
+    border:#000 1px solid; 
+    z-index:9; 
+    position:absolute
+}
+
+.tcg-card {
+    width: 10em; 
+    height: 14em; 
+    background-image: url(../img/Cardback.png);
+    background-size: cover;
+    background-position: center; 
+    margin: 0.5em 2em auto 4em; 
+    border-radius: 15px; 
+    border: #000 1px solid; 
+    z-index: 9; 
+    position: absolute;
+}
+
+.card1 { grid-area: 1 / 1 / 2 / 2; }
+.card2 { grid-area: 1 / 2 / 2 / 3; }
+.card3 { grid-area: 1 / 3 / 2 / 4; }
+.card5 { grid-area: 2 / 1 / 3 / 2; }
+.card6 { grid-area: 2 / 2 / 3 / 3; }
+.card7 { grid-area: 2 / 3 / 3 / 4; }
+.card9 { grid-area: 3 / 1 / 4 / 2; }
+.card10 { grid-area: 3 / 2 / 4 / 3; }
+.card11 { grid-area: 3 / 3 / 4 / 4; }
+
+.tcg-modal {
+    display: none; /* Verstecke das Modal standardmäßig */
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8); /* Abgedunkelter Hintergrund */
+}
+
+.tcg-modal-content {
+    margin: auto;
+    display: block;
+    width: 80%;
+    max-width: 700px; /* Maximalgröße des Bildes */
+}
+
+.tcg-close {
+    position: absolute;
+    top: 15px;
+    right: 35px;
+    color: white;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.tcg-card:hover {
+    box-shadow: 
+      -20px -20px 30px -25px var(--color1), 
+      20px 20px 30px -25px var(--color2), 
+      -7px -7px 10px -5px var(--color1), 
+      7px 7px 10px -5px var(--color2), 
+      0 0 13px 4px rgba(255,255,255,0.3),
+      0 55px 35px -20px rgba(0, 0, 0, 0.5);
+  }
+
+  .tcg-card.common {
+    --color1: var(--common1);
+    --color2: var(--common2);
+    --front: var(--commonfront);
+  }
+  .tcg-card.rare {
+    --color1: var(--rare1);
+    --color2: var(--rare2);
+    --front: var(--rarefront);
+  }
+  .tcg-card.urare {
+    --color1: var(--urare1);
+    --color2: var(--urare2);
+    --front: var(--urarefront);
+  }
+  .tcg-card.uncommon {
+    --color1: #ec9bb6;
+    --color2: #ccac6f;
+    --color3: #69e4a5;
+    --color4: #8ec5d6;
+    --color5: #b98cce;
+    --front: var(--uncommonfront);
+  }
+
+  .tcg-card.active:before,
+  .tcg-card:hover:before {
+    animation: none;
+    background-image: linear-gradient(
+      110deg,
+      /*transparent 25%,*/
+      var(--color1) 48%,
+      var(--color2) 52%,
+      /*transparent 75%*/
+    );
+    background-position: 50% 50%;
+    background-size: 250% 250%;
+    /*opacity: .88;*/
+    filter: brightness(.66) contrast(1.33);
+    transition: none;
+  }
+  
+  .tcg-card.active:before,
+  .tcg-card:hover:before,
+  .tcg-card.active:after,
+  .tcg-card:hover:after {
+    animation: none;
+    transition: none;
+  }
+  
+  .tcg-card.animated {
+    transition: none;
+    animation: holotcg-card 12s ease 0s 1;
+    &:before { 
+      transition: none;
+      animation: holoGradient 12s ease 0s 1;
+    }
+    &:after {
+      transition: none;
+      animation: holoSparkle 12s ease 0s 1;
+    }
+  }
+
+  @media only screen and (max-width: 767px) {
+
+    .hideMobile {
+        display: none!important;
+        visibility: hidden!important;
+    }
+
+    .rubiRadio {
+        /* margin-bottom: 1em; */
+        /* margin-top: 123%; */
+        z-index: 40;
+        display: -webkit-inline-box;
+        margin-right: 1.3em;
+        visibility: hidden;
+    }
+
+    audio {
+        position: absolute;
+        margin-bottom: 5px;
+        margin-left: auto;
+        margin-right: auto;
+        width: 150px;
+        height: 150px;
+        z-index: 1000;
+    }
+
+    #audioContainer {
+        visibility: hidden;
+        position: absolute;
+        height: 200px;
+        margin-left: auto;
+        margin-right: auto;
+        align-self: center;
+        /* display: grid; */
+        width: 95%;
+    }
+    #navbar {
+        width: 94%;
+        height: 8em;
+        overflow: scroll;
+        z-index: 5;
+    }
+    .logo {
+        width: 90%;
+    }
+    .mobile {
+        z-index: 20;
+        position: absolute;
+        margin-left: 11em;
+        /* z-index: 55; */
+        color: white;
+        visibility: visible;
+        font-size: 0.8em;
+        margin-top: 0.2em;
+    }
+
+    .scrollContent {
+        align-content: center;
+        height: 801px;
+        overflow: scroll;
+        padding-bottom: 4em;
+        position: relative;
+        margin-top: 7em;
+    }
+
+    img {
+        max-width: 50%;
+        max-height: 50%;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 10;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+    }
+
+    .modalContent {
+        background-color: #fefefe;
+        margin-top: 3em;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 20px;
+        border-radius: 10px;
+        width: 75%;
+        position: relative;
+        top: 5%;
+        max-height: 80vh;
+        /* Maximal 80% der Viewport-HÃ¶he */
+        overflow-y: auto;
+        /* Vertikaler Scrollbalken */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .close {
+        position: absolute;
+        top: 10px;
+        /* Abstand vom oberen Rand */
+        right: 10px;
+        /* Abstand vom rechten Rand */
+        font-size: 30px;
+        /* GrÃ¶ÃŸe des SchlieÃŸen-Symbols */
+        color: black;
+        /* Farbe des SchlieÃŸen-Symbols */
+        cursor: pointer;
+        /* Zeigt an, dass es klickbar ist */
+    }
+
+    .close:hover,
+    .close:focus {
+        color: #000;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .folderOuter {
+        background-color: rgb(66, 33, 9);
+        background-image: url(../img/leather.png);
+        width: 85vw;
+        height: 80vh;
+        margin: 1em auto auto auto;
+        border-radius: 15px;
+        padding-top: 0.2em;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: 1fr;
+        grid-column-gap: 0px;
+        grid-row-gap: 0px;
+    }
+
+    .folderInnerLeft {
+        width: 41vw;
+        height: 79.5vh;
+        margin: auto auto auto 0;
+        border-radius: 15px;
+        background-color: #f3e5ab;
+        margin: auto auto auto 1.2em;
+        border: #000 solid 1px;
+        grid-area: 1 / 1 / 2 / 3;
+    }
+
+    .folderInner2 {
+        width: 41vw;
+        height: 79vh;
+        margin: 0 0 auto 1px;
+        border-radius: 15px;
+        background-color: #f3e5ab;
+        border: #000 solid 1px;
+        z-index: 3;
+        position: absolute;
+    }
+
+    .folderInner3 {
+        width: 41vw;
+        height: 79vh;
+        margin: auto auto auto 1px;
+        border-radius: 15px;
+        background-color: #f3e5ab;
+        border: #000 solid 1px;
+        z-index: 4;
+        position: absolute;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        grid-column-gap: 5px;
+        grid-row-gap: 5px;
+    }
+
+    .folderInnerRight {
+        width: 41vw;
+        height: 79.5vh;
+        margin: auto auto auto 52em;
+        border-radius: 15px;
+        background-color: #f3e5ab;
+        border: #000 solid 1px;
+        grid-area: 1 / 2 / 2 / 3;
+        z-index: 2;
+        position: absolute;
+    }
+
+    .folderInnerRight2 {
+        width: 41vw;
+        height: 79vh;
+        margin: 0 0 auto -3px;
+        border-radius: 15px;
+        background-color: #f3e5ab;
+        border: #000 solid 1px;
+        z-index: 3;
+        position: absolute;
+    }
+
+    .folderInnerRight3 {
+        width: 41vw;
+        height: 79vh;
+        margin: auto auto auto -5px;
+        border-radius: 15px;
+        background-color: #f3e5ab;
+        border: #000 solid 1px;
+        z-index: 4;
+        position: absolute;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        grid-column-gap: 5px;
+        grid-row-gap: 5px;
+    }
+
+    .folderRing {
+        width: 7vw;
+        height: 1vh;
+        background-color: silver;
+        z-index: 6;
+        position: absolute;
+        border: 5px darkgray solid;
+        border-radius: 25px;
+        margin-left: 46.5em;
+        margin-top: 5em;
+    }
+
+    .folderRing2 {
+        width: 7vw;
+        height: 1vh;
+        background-color: silver;
+        z-index: 6;
+        position: absolute;
+        border: 5px darkgray solid;
+        border-radius: 25px;
+        margin-left: 46.5em;
+        margin-top: 20em;
+    }
+
+    .folderRing3 {
+        width: 7vw;
+        height: 1vh;
+        background-color: silver;
+        z-index: 6;
+        position: absolute;
+        border: 5px darkgray solid;
+        border-radius: 25px;
+        margin-left: 46.5em;
+        margin-top: 35em;
+    }
+
+    .hiddenCard {
+        width: 10em;
+        height: 14em;
+        background-image: url(../img/Cardback.png);
+        margin: 0.5em 2em auto 4em;
+        border-radius: 15px;
+        grid-area: 1 / 1 / 2 / 2;
+        background-size: cover;
+        background-position: center;
+        border: #000 1px solid;
+        z-index: 9;
+        position: absolute
+    }
+
+    .tcg-card {
+        width: 10em;
+        height: 14em;
+        background-image: url(../img/Cardback.png);
+        background-size: cover;
+        background-position: center;
+        margin: 0.5em 2em auto 4em;
+        border-radius: 15px;
+        border: #000 1px solid;
+        z-index: 9;
+        position: absolute;
+    }
+
+    .card1 {
+        grid-area: 1 / 1 / 2 / 2;
+    }
+    .card2 {
+        grid-area: 1 / 2 / 2 / 3;
+    }
+    .card3 {
+        grid-area: 1 / 3 / 2 / 4;
+    }
+    .card5 {
+        grid-area: 2 / 1 / 3 / 2;
+    }
+    .card6 {
+        grid-area: 2 / 2 / 3 / 3;
+    }
+    .card7 {
+        grid-area: 2 / 3 / 3 / 4;
+    }
+    .card9 {
+        grid-area: 3 / 1 / 4 / 2;
+    }
+    .card10 {
+        grid-area: 3 / 2 / 4 / 3;
+    }
+    .card11 {
+        grid-area: 3 / 3 / 4 / 4;
+    }
+
+    .tcg-modal {
+        display: none;
+        /* Verstecke das Modal standardmÃ¤ÃŸig */
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.8);
+        /* Abgedunkelter Hintergrund */
+    }
+
+    .tcg-modal-content {
+        margin: auto;
+        display: block;
+        width: 80%;
+        max-width: 700px;
+        /* MaximalgrÃ¶ÃŸe des Bildes */
+    }
+
+    .tcg-close {
+        position: absolute;
+        top: 15px;
+        right: 35px;
+        color: white;
+        font-size: 40px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .tcg-card:hover {
+        box-shadow:
+            -20px -20px 30px -25px var(--color1),
+            20px 20px 30px -25px var(--color2),
+            -7px -7px 10px -5px var(--color1),
+            7px 7px 10px -5px var(--color2),
+            0 0 13px 4px rgba(255, 255, 255, 0.3),
+            0 55px 35px -20px rgba(0, 0, 0, 0.5);
+    }
+
+    .tcg-card.common {
+        --color1: var(--common1);
+        --color2: var(--common2);
+        --front: var(--commonfront);
+    }
+    .tcg-card.rare {
+        --color1: var(--rare1);
+        --color2: var(--rare2);
+        --front: var(--rarefront);
+    }
+    .tcg-card.urare {
+        --color1: var(--urare1);
+        --color2: var(--urare2);
+        --front: var(--urarefront);
+    }
+    .tcg-card.uncommon {
+        --color1: #ec9bb6;
+        --color2: #ccac6f;
+        --color3: #69e4a5;
+        --color4: #8ec5d6;
+        --color5: #b98cce;
+        --front: var(--uncommonfront);
+    }
+
+    .tcg-card.active:before,
+    .tcg-card:hover:before {
+        animation: none;
+        background-image: linear-gradient(110deg,
+                /*transparent 25%,*/
+                var(--color1) 48%,
+                var(--color2) 52%,
+                /*transparent 75%*/
+            );
+        background-position: 50% 50%;
+        background-size: 250% 250%;
+        /*opacity: .88;*/
+        filter: brightness(.66) contrast(1.33);
+        transition: none;
+    }
+
+    .tcg-card.active:before,
+    .tcg-card:hover:before,
+    .tcg-card.active:after,
+    .tcg-card:hover:after {
+        animation: none;
+        transition: none;
+    }
+
+    .tcg-card.animated {
+        transition: none;
+        animation: holotcg-card 12s ease 0s 1;
+        &:before {
+            transition: none;
+            animation: holoGradient 12s ease 0s 1;
+        }
+        &:after {
+            transition: none;
+            animation: holoSparkle 12s ease 0s 1;
+        }
+    }
+
+    .navbar .specialLink {
+        font-size: 1.2em !important;
+        font-weight: bold !important;
+        text-decoration: none !important;
+        background: linear-gradient(45deg, #ff00cc, #3333ff, #00ffff, #ff6600, #ff00cc) !important;
+        background-size: 200% !important;
+        -webkit-background-clip: text !important;
+        background-clip: text !important;
+        color: transparent !important;
+        animation: holo-animation 5s linear infinite !important;
+        transition: all 0.3s ease-in-out !important;
+        cursor: pointer !important;
+    }
+
+    .navbar .specialLink:hover {
+        animation: holo-animation 2s linear infinite;
+        background-size: 300%;
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.8), 0 0 12px rgba(255, 0, 255, 0.5);
+    }
+
+    @keyframes holo-animation {
+        0% {
+            background-position: 0% 50%;
+        }
+        100% {
+            background-position: 100% 50%;
+        }
+    }
+
 }

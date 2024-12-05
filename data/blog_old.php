@@ -6,7 +6,7 @@ $uhrzeit = date("H:i");
 require('creds.php');
 
 // Create connection
-$conn = sqlsrv_connect($servername, array("UID"=>$username, "PWD"=>$password, "Database"=>$dbname));
+$conn = sqlsrv_connect($servername, array("UID"=>$username, "PWD"=>$password, "Database"=>$dbname, "Port"=>$dbport));
 
 // Check connection
 if ($conn === false) {

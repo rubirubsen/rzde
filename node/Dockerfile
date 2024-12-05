@@ -7,7 +7,6 @@ WORKDIR /app
 # Abhängigkeiten installieren
 COPY package.json package-lock.json /app/
 RUN npm ci --production
-RUN npm install
 
 # Anwendungscode kopieren
 COPY . /app

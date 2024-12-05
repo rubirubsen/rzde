@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import WebSocket from 'ws';
-import tmi from 'tmi.js';
+import tmi, { Client } from 'tmi.js';
 import Poker from './bot_modules/poker.js';
 import * as helper from './bot_modules/helper.js';
 import * as twitch from './bot_modules/twitch.js';
@@ -13,12 +13,6 @@ import sql from 'mssql';
 
 dotenv.config();
 
-let aktiveAnmeldungen = new Map();
-let pokerEndTime = Date.now();
-let socketClient;
-let activeWsClients = [];
-
-
 /** Express für API **/
 const express = (await import('express')).default;
 const app = express();
@@ -28,18 +22,14 @@ const overlayAuth = process.env.OVERLAY_SECRET;
 const authConfig = {
     user: process.env.DB_USER,
     password: process.env.DB_SECRET,
-    server: 'rubizockt.de',
+    server: process.env.DB_SERVER,
+    port: process.env.DB_PORT ||33246,
     database: process.env.DB_NAME,
     options: {
         encrypt: true, // For Azure SQL Database
         trustServerCertificate: true // Change to false for production
     }
 };
-// Middleware zum Parsen von JSON-Daten
-app.use(express.json());
-
-// Middleware zum Parsen von URL-kodierten Formulardaten
-app.use(express.urlencoded({ extended: true }));
 
 const options = {
     key: fs.readFileSync('./ssl/privkey.pem'),
@@ -61,321 +51,62 @@ const twitchConfig = {
 };
 
 
-const videoCommands = {
-    '!15000volt': '15000volt',
-    '!1700mark': '1700mark',
-    '!2000later': '2000later',
-    '!antworten': 'antworten',
-    '!archbtw': 'archbtw',
-    '!atemlos': 'breathtaking',
-    '!bathroom': 'bathroom',
-    '!binichdabei': 'binichdabei',
-    '!bluescreen': 'bluescreen',
-    '!boom': 'boom',
-    '!camping': 'camper',
-    '!cat': 'cat',
-    '!chicks': 'chicks',
-    '!cringe': 'cringe',
-    '!crowdstrike': 'crowdstrike',
-    '!dds': 'dds',
-    '!diegrünen': 'diegrünen',
-    '!disconnect': 'disconnect',
-    '!drei': 'drei',
-    '!eier': 'eier',
-    '!ente': 'ente',
-    '!eww': 'eww',
-    '!fax': 'fax',
-    '!feuer': 'fire',
-    '!freshavocado': 'freshavocado',
-    '!gefahr': 'gefahr',
-    '!geringverdiener': 'geringverdiener',
-    '!goat': 'goat',
-    '!groovy': 'groovy',
-    '!hahaschwanz': 'hahaschwanz',
-    '!hase': 'hase',
-    '!highscore': 'highscore',
-    '!isso': 'isso',
-    '!kristellmett': 'kristellmett',
-    '!keininstrument': 'keininstrument',
-    '!lametta': 'lametta',
-    '!later': 'later',
-    '!macke': 'macke',
-    '!megalangweilig': 'megalangweilig',
-    '!megaboom': 'megaboom',
-    '!megaburp': 'megaburp',
-    '!mindblown': 'mindblown',
-    '!nachhause': 'nachhause',
-    '!ninja': 'ninja',
-    '!nice': 'nice',
-    '!nein': 'nein',
-    '!noo' : 'noo',
-    '!ohgott': 'ohgott',
-    '!ok': 'ok',
-    '!ouha': 'ouha',
-    '!plan': 'plan',
-    '!pikatwerk': 'pikatwerk',
-    '!preis': 'preis',
-    '!radar': 'radar',
-    '!rage': 'rage',
-    '!ratedw': 'ratedw',
-    '!schabernack': 'schabernack',
-    '!sheeshdigga': 'sheeshdigga',
-    '!sheeshmittwoch': 'sheeshmittwoch',
-    '!smash': 'smash',
-    '!stop': 'stop',
-    '!sos': 'sos',
-    '!stimm': 'stimm',
-    '!stimme': 'stimme',
-    '!sun': 'sun',
-    '!super': 'super',
-    '!tastadatur': 'tastadatur',
-    '!tastethesun': 'tastethesun',
-    '!technikstreams': 'technikstreams',
-    '!tos': 'tos',
-    '!unverzueglich': 'unverzueglich',
-    '!verwaehlung': 'verwaehlung',
-    '!verwaltung': 'verwaltung',
-    '!wasted': 'wasted',
-    '!what': 'what',
-    '!why': 'why',
-    '!windofs': 'windofs',
-    '!wissen': 'wissen',
-    '!wtf': 'wtf',
-    '!xbox': 'xbox'
-};
+const videoCommands = JSON.parse(fs.readFileSync('./datasets/videoCommands.json', 'utf-8'));
+const audioCommands = JSON.parse(fs.readFileSync('./datasets/audioCommands.json', 'utf-8'));
+const videoTrigger = JSON.parse(fs.readFileSync('./datasets/videoTrigger.json', 'utf-8'));
+const emoteTrigger = JSON.parse(fs.readFileSync('./datasets/emoteTrigger.json', 'utf-8'));
+const filePaths = JSON.parse(fs.readFileSync('./datasets/filePaths.json', 'utf-8'));
 
-const audioCommands = {
-    '!200puls':"200puls",
-    '!achtung':"achtung",
-    '!ahshit':"ahshit",
-    '!alarm':"alarm",
-    '!alexa':"alexa",
-    '!amrad':"amrad",
-    '!arrogant':"arrogant",
-    '!babam':"babam",
-    '!baeh':"baeh",
-    '!banned':"banned",
-    '!beckenrand':"beckenrand",
-    '!belastend':"belastend",
-    '!berndruhe':"berndruhe",
-    '!biele':"biele",
-    '!bleibtso':"bleibtso",
-    '!bloed':"bloed",
-    '!bluetooth':"bluetooth",
-    '!bock':"bock",
-    '!bombe':"bombe",
-    '!bonk':"bonk",
-    '!burp':"burp",
-    '!bzzt':"bzzt",
-    '!chirp':"chirp",
-    '!cmake':"cmake",
-    '!coin':"coin",
-    '!cookie':"cookie",
-    '!cyberbacher':"cyberbacher",
-    '!dasistgeil':"dasistgeil",
-    '!dc':"dc",
-    '!dergeht':"dergeht",
-    '!deutlich':"deutlich",
-    '!diagnose':"diagnose",
-    '!dickmove':"dickmove",
-    '!dingdong':"dingdong",
-    '!dogshit':"dogshit",
-    '!drogenfahndung':"drogenfahndung",
-    '!dumm':"dumm",
-    '!dusollstatmen':"dusollstatmen",
-    '!eeeeeee':"eeeeee",
-    '!eigenleben':"eigenleben",
-    '!erdbeerkäse':"erdbeerkäse",
-    '!erika':"erika",
-    '!eyey':"eyey",
-    '!fail':"fail",
-    '!falscheentscheidung':"falscheentscheidung",
-    '!fart':"fart",
-    '!fbi':"fbi",
-    '!fettbemmen':"fettbemmen",
-    '!fetzig':"fetzig",
-    '!fia':"fia",
-    '!fickerberg':"fickerberg",
-    '!gefallen':"gefallen",
-    '!gege':"gege",
-    '!geier':"geier",
-    '!gewitter':"gewitter",
-    '!gibsmir':"gibsmir",
-    '!gigi':"gigi",
-    '!gurke':"gurke",
-    '!hallo':"hallo",
-    '!happybirthday':"happybirthday",
-    '!heim':"heim",
-    '!heiss':"heiss",
-    '!hellodaddy':"hellodaddy",
-    '!heulleise':"heulleise",
-    '!hilfe':"hilfe",
-    '!hodensack':"hodensack",
-    '!horn':"horn",
-    '!howdareyou':"howdareyou",
-    '!hunger':"hunger",
-    '!hurz':"hurz",
-    '!ichbinreich':"ichbinreich",
-    '!icq':"icq",
-    '!immerdiesegurken':"immerdiesegurken",
-    '!indertat':"indertat",
-    '!internet':"internet",
-    '!irre':"irre",
-    '!javapeek':"javapeek",
-    '!jfpeek':"jfpeek",
-    '!jo':"jo",
-    '!kabelmaus':"kabelmaus",
-    '!kaching':"kaching",
-    '!kacken':"kacken",
-    '!kaiuwe':"kaiuwe",
-    '!kammamamachen':"kammamamachen",
-    '!kassette':"kassette",
-    '!klapse':"klapse",
-    '!knock':"knock",
-    '!komisch':"komisch",
-    '!kranplätze':"kranplätze",
-    '!langweilig':"langweilig",
-    '!leviosa':"leviosa",
-    '!lieferung':"lieferung",
-    '!life':"life",
-    '!listen':"listen",
-    '!luegen':"lügen",
-    '!machhinne':"machhinne",
-    '!miez':"miez",
-    '!miregal':"miregal",
-    '!mlem':"mlem",
-    '!muhaha':"muhaha",
-    '!mussraus':"mussraus",
-    '!mypenis':"mypenis",
-    '!natuerlich':"natuerlich",
-    '!nebenrisiken':"nebenrisiken",
-    '!neee':"neee",
-    '!nerf':"nerf",
-    '!newdevice':"newdevice",
-    '!nichtlesen':"nichtlesen",
-    '!nom':"nom",
-    '!numpad':"numpad",
-    '!okgurke':"okgurke",
-    '!onoff':"onoff",
-    '!ostdeutsch':"ostdeutsch",
-    '!over9000':"over9000",
-    '!ovpn':"ovpn",
-    '!pain':"pain",
-    '!penisistpenis':"penisistpenis",
-    '!pfu':"pfu",
-    '!ping':"ping",
-    '!powerlevel':"powerlevel",
-    '!prickelnd':"prickelnd",
-    '!prima':"prima",
-    '!prost':"prost",
-    '!pun':"pun",
-    '!purge':"purge",
-    '!quack':"quack",
-    '!quak':"quak",
-    '!regal':"regal",
-    '!russencyber':"russencyber",
-    '!rustikal':"rustikal",
-    '!sabbelnich':"sabbelnich",
-    '!samen':"samen",
-    '!schaffen':"schaffen",
-    '!scheissding':"scheissding",
-    '!scheissemitscheisse':"scheissemitscheisse",
-    '!schienenersatzverkehr':"schienenersatzverkehr",
-    '!schlag':"schlag",
-    '!shame':"shame",
-    '!shutdown':"shutdown",
-    '!shutup':"shutup",
-    '!sketchyshit':"sketchyshit",
-    '!sleepmode':"sleepmode",
-    '!startup':"startup",
-    '!subbomb':"subbomb",
-    '!superhot':"superhot",
-    '!sus':"sus",
-    '!svpn':"svpn",
-    '!teams':"teams",
-    '!telegram':"telegram",
-    '!theone':"theone",
-    '!tief':"tief",
-    '!toasty':"toasty",
-    '!tolleswort':"tolleswort",
-    '!tralala':"tralala",
-    '!trinken':"trinken",
-    '!uhtini':"uhtini",
-    '!usb':"usb",
-    '!uwop':"uwop",
-    '!viecher':"viecher",
-    '!visca':"visca",
-    '!voicejoin':"voicejoin",
-    '!vorwärts':"vorwärts",
-    '!vpn':"vpn",
-    '!wakeup':"wakeup",
-    '!waruumääh':"waruumääh",
-    '!washierlos':"washierlos",
-    '!wasmachen':"wasmachen",
-    '!water':"water",
-    '!waweb':"waweb",
-    '!wetfart':"wetfart",
-    '!whip':"whip",
-    '!willnichtmehr':"willnichtmehr",
-    '!winamp':"winamp",
-    '!wow':"wow",
-    '!wvpn':"wvpn",
-    '!wwm':"wwm",
-    '!yay':"yay",
-    '!zerstörer':"zerstörer",
-    '!zombie':"zombie",
-    '!zweischoppe':"zweischoppe",
-    '!zonk':"zonk"
-};
-
-const videoTrigger = {
-    'KEKW': 'vid_kekw',
-    'Kappa' : 'kappa',
-    'LUL' : 'lol',
-    'LOL' : 'lol',
-    'lol' : 'lol',
-    'SeemsGood' : 'noice',
-    'nice': 'noice',
-    'rubizo420' : 'vid_420'
-};
-
-const emoteTrigger = {
-    'rubizoDancer' : 'rubizodancer',
-    'KEKW':'emo_kekw',
-    'rubizo420' : 'emo_rubizo420',
-}
-
-const client = new tmi.client(twitchConfig);
+const tmiClient = new tmi.client(twitchConfig);
 const httpsServer = https.createServer(options, app);
-const wss = new WebSocket.Server({ server: httpsServer });
+const wss = new WebSocket.Server({server:httpsServer});
+
+let aktiveAnmeldungen = new Map();
+let pokerEndTime = Date.now();
+let socketClient;
+let activeWsClients = [];
+let blisterCards;
+let bohnencounter = 0;
+
+// Middleware zum Parsen von JSON-Daten
+app.use(express.json());
+// Middleware zum Parsen von URL-kodierten Formulardaten
+app.use(express.urlencoded({ extended: true })); 
 
 
-
-function sendAll (message) {
-    for (let i = 0; i < activeWsClients.length; i++) {
-        activeWsClients[i].ws.send(JSON.stringify(message)); // Zugriff auf ws
-    }
-}
-
+/** Websocket Logik */
 wss.on('connection', function connection(ws, req) {
     const parameters = new URL(req.url, `http://${req.headers.host}`);
     const uid = parameters.searchParams.get('uid');
-    let hash = ''
-    // IP-Adresse abrufen
+    const clientType = parameters.searchParams.get('client_type');  // Holen des client_type-Parameters
+    let hash = '';
+    
     const ip = req.socket.remoteAddress;
-
+    
     if (uid === process.env.OVERLAY_SECRET) {
-        console.log(`[WS] Verbunden mit Rubi von IP: ${ip}`);
+        
 
         // Hashen der IP-Adresse
         hash = crypto.createHash('sha256').update(ip).digest('hex');
         ws.id = hash;  // Setze die ID auf den Hash der IP-Adresse
+
+        // Speichere den clientType in der WebSocket-Instanz oder einer globalen Map
+        ws.clientType = clientType;  // Dies hilft, den Client später zu identifizieren
+
+        activeWsClients.push({ id: hash, ws, clientType });  // Füge auch den clientType in die Datenstruktur ein
+        console.log(`[WS] Verbunden mit Rubi von IP: ${ip}, Client-Typ: ${clientType}. Somit haben wir folgende AKTIVEN clients via Websocket: ${activeWsClients}`);
+
     } else {
         ws.close();
+        console.log("Zugriff auf WS geblockt von IP " + ip);
         return;
     }
-
-    activeWsClients.push({ id: hash, ws });
+    
+    ws.on('message', function incoming(message) {
+        console.log('Nachricht erhalten:', message.toString());
+        // Reagiere auf die Nachricht
+        ws.send('Antwort vom Server: ' + message);
+    });
 
     ws.isAlive = true;
     ws.on('pong', () => ws.isAlive = true);
@@ -385,6 +116,7 @@ wss.on('connection', function connection(ws, req) {
         activeWsClients = activeWsClients.filter(client => client.id !== hash);
     });
 });
+
 
 // Ping-Interval einrichten
 const interval = setInterval(() => {
@@ -397,6 +129,16 @@ const interval = setInterval(() => {
     });
 }, 30000);  // Alle 30 Sekunden
 
+
+/** Standard-Routing */
+app.get('/', (req, res) => {
+    res.send("rzde API - admin@rubizockt.de");
+});
+
+app.get('/health', async(req,res) => {
+    res.status(200).send('ok');
+})
+
 /** Routen-Defintionen für Spotify-Auth **/
 app.get('/spotify/login', (req, res) => {
     spotify.getAccessToken(req,res)
@@ -406,40 +148,21 @@ app.get('/spotify/callback', async (req, res) => {
     spotify.callbackProcess(req,res);
 });
 
-app.get('/spotify/info/track', async(req, res) => {
+app.get('/spotify/info/track', async (req, res) => {
     try {
-        const trackFilePath = '/app/views/spotify/info/current_track.txt';
-        const artistFilePath = '/app/views/spotify/info/current_artist.txt';
-        const jsonFilePath = '/app/views/spotify/info/current_track.json';
+        const trackName = readFileContent(filePaths.track);
 
-        let trackName = '';
-        let artistNames = '';
-
-        if (fs.existsSync(trackFilePath)) {
-            trackName = fs.readFileSync(trackFilePath, 'utf8').trim();
-        }
-        if (fs.existsSync(artistFilePath)) {
-            artistNames = fs.readFileSync(artistFilePath, 'utf8').trim();
-        }
-
-        if (trackName && artistNames) {
-            const currentTrackData = {
-                trackName: trackName,
-                artistNames: artistNames
-            };
-
-            const jsonData = JSON.stringify(currentTrackData, null, 2);
-            fs.writeFileSync(jsonFilePath, jsonData, 'utf8');
-            console.log('Aktuelle Track-Daten in JSON-Datei gespeichert');
-            res.json(trackName);
+        if (trackName) {
+            const currentTrackData = { trackName };
+            helper.saveToJson(filePaths.json, currentTrackData); // Optional, falls der Track-Name separat gespeichert werden soll
+            res.json({ trackName });
         } else {
             res.status(404).json({ error: 'Keine aktuellen Track-Daten verfügbar' });
         }
     } catch (error) {
-        console.error('Fehler beim Lesen oder Speichern der Track-Daten:', error);
+        console.error('Fehler:', error);
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
-
 });
 
 app.get('/spotify/info/artist', async(req, res) => {
@@ -512,12 +235,9 @@ app.get('/spotify/info/json', async(req, res) => {
 
 });
 
-app.get('/', (req, res) => {
-    res.send("rzde API - admin@rubizockt.de");
-});
 
 
-/** Twitch - Bot **/
+/** Twitch - Bot - Routen **/
 app.get('/twitch/login', async(req,res) => {
     twitch.twitchLogin(req,res);
 });
@@ -574,7 +294,9 @@ app.get('/twitch/subscribe', async(req, res) => {
     req.write(data);
     req.end();
 });
-/** OVERLAY - CONTROL */
+
+
+/** OVERLAY - CONTROL - Route */
 app.post('/overlay/control/command', (req, res) => {
     const { cmd, message, auth } = req.body;
     const overlayAuth = process.env.OVERLAY_SECRET;
@@ -582,7 +304,6 @@ app.post('/overlay/control/command', (req, res) => {
     if (auth === overlayAuth) {
         if(socketClient){
             console.log(message);
-            sendAll({"cmd":"trigger","triggerName": message });
         } else {
             console.log("No Client");
         }
@@ -592,7 +313,9 @@ app.post('/overlay/control/command', (req, res) => {
     }
 });
 
-/** WEBSEITEN - AUTH */
+
+
+/** WEBSEITEN - AUTH - Route */
 app.post('/auth/login', async (req, res) => {
     console.log(req.body);
     const { username, password } = req.body;
@@ -625,34 +348,48 @@ app.post('/auth/login', async (req, res) => {
     }
 });
 
-client.connect();
 
-client.on('connected', (address, port) => {
+/*Twitch-Client*/
+tmiClient.connect();
+
+tmiClient.on('connected', (address, port) => {
     console.log(`Verbunden mit ${address}:${port}`);
 });
 
-client.on('chat', async (channel, user, message, self) => {
+tmiClient.on('chat', async (channel, tags, message, self) => {
     if (self) return;
     
-    console.log(message);
-
+    console.log(tags, message);
+    
+    if (tags.bits) {
+        const bits = parseInt(tags.bits);
+        if (bits >= 1) {
+            const msg = `${tags.username} hat ${bits} Bits gespendet!`;
+            console.log(msg);
+        }
+    }
+    
     if (message.startsWith('!')) {
+
         let args = message.split(' ');
         const command = args[0];
 
         if (command === '!songinfo') {
+
             try {
                 let { trackName, artistNames } = await spotify.getCurrentTrack();
                 console.log("title: ", trackName);
                 console.log("artist: ", artistNames);
-                client.say(channel, `Ihr hört ${trackName} von ${artistNames}.`);
+                tmiClient.say(channel, `Ihr hört ${trackName} von ${artistNames}.`);
             } catch (error) {
                 console.error("Fehler beim Abrufen der Songinformationen:", error);
-                client.say(channel, "Es gab ein Problem beim Abrufen der Songinformationen.");
+                tmiClient.say(channel, "Es gab ein Problem beim Abrufen der Songinformationen.");
             }
+
         }
 
         if (command === '!sr') {
+
             try{
                 let trackId;
                 let query = args.slice(1).join(' ');
@@ -671,34 +408,38 @@ client.on('chat', async (channel, user, message, self) => {
 
                 }
             
-                trackId = await spotify.addToQueue(trackId);
-                console.log('TRACKID: ', trackId);
-
-                let track = await spotify.getTrackById(trackId);
-                console.log('TRACK-TRACK: ',track);
-                client.say(channel, `Ich habe ${track.name} eingefügt in die Warteschlange.`);
-
+                
+                if (tags.username === 'bohnenkrautsaft'){
+                    bohnencounter++;
+                    console.log("Bohnenkrautsaft hat heute schon", bohnencounter, "Songs eingefügt");
+                    trackId = await spotify.addToQueue(trackId);
+                    let track = await spotify.getTrackById(trackId);
+                    tmiClient.say(channel, `Ich habe ${track.name}  eingefügt in die Warteschlange. Bohnenkrautsaft hat schon ${bohnencounter} Songs eingefügt`);	
+                }else{
+                    trackId = await spotify.addToQueue(trackId);
+                    console.log('TRACKID: ', trackId);
+                    let track = await spotify.getTrackById(trackId);
+                    console.log('TRACK-TRACK: ',track);
+                    tmiClient.say(channel, `Ich habe ${track.name} eingefügt in die Warteschlange.`);
+                }
             } catch (error) {
-                console.error("Fehler beim Abrufen der Songinformationen:");
+                console.error("Fehler beim Abrufen der Songinformationen:",error);
             }
         }
 
         if (command === '!demotest') {
-            client.say(channel, "Test");
+            tmiClient.say(channel, "Test");
         }
 
         if (command === '!followage') {
-            helper.getTwitchBearerToken(user.username, twitchClient, twitchSecret).then(data => {
+            helper.getTwitchBearerToken(tags.username, twitchClient, twitchSecret).then(data => {
                 const bearT = data.bearerToken;
                 helper.getUserInfo(twitchClient, bearT, data.username).then(userData => {
                     helper.getFollowDate(userData.clientId, userData.accessToken, userData.userId).then(data => {
                         const followedDate = new Date(data.followDate);
                         const formattedDate = followedDate.toLocaleDateString('de-DE');
                         const response = 'Du folgst seit: ' + formattedDate;
-                        if(activeWsClients != []){
-                            sendAll(response);
-                        }
-                        client.say(channel, response);
+                        tmiClient.say(channel, response);
                     });
                 });
             }).catch(error => {
@@ -714,32 +455,32 @@ client.on('chat', async (channel, user, message, self) => {
 
             pokerSpiel.pokerPlayers.clear();
 
-            if (pokerSpiel.pokerPlayers.has(user.username)) {
-                client.say(channel, 'Du bist bereits angemeldet.');
+            if (pokerSpiel.pokerPlayers.has(tags.username)) {
+                tmiClient.say(channel, 'Du bist bereits angemeldet.');
             } else {
-                pokerSpiel.pokerPlayers.add(user.username);
-                client.say(channel, `${user.username} hat sich für das Poker-Spiel angemeldet.`);
+                pokerSpiel.pokerPlayers.add(tags.username);
+                tmiClient.say(channel, `${tags.username} hat sich für das Poker-Spiel angemeldet.`);
             }
 
             pokerEndTime = pokerSpiel.endTime;
 
-            client.say(channel, 'Das Poker-Spiel hat begonnen! Du hast 30 Sekunden Zeit, um dich anzumelden. Benutze !joinpoker um teilzunehmen.');
+            tmiClient.say(channel, 'Das Poker-Spiel hat begonnen! Du hast 30 Sekunden Zeit, um dich anzumelden. Benutze !joinpoker um teilzunehmen.');
 
             let pokerTimer = setInterval(() => {
                 const remainingTime = Math.max(0, Math.ceil((pokerEndTime - Date.now()) / 1000));
 
                 if (remainingTime > 0) {
-                    client.say(channel, `Noch ${remainingTime} Sekunden, um dich anzumelden! Benutze !joinpoker.`);
+                    tmiClient.say(channel, `Noch ${remainingTime} Sekunden, um dich anzumelden! Benutze !joinpoker.`);
                 } else {
                     clearInterval(pokerTimer);
 
                     if (pokerSpiel.pokerPlayers.size < 2) {
-                        client.say(channel, 'Die Anmeldefrist ist abgelaufen. Nicht genügend Spieler angemeldet. Das Spiel wird nicht gestartet.');
+                        tmiClient.say(channel, 'Die Anmeldefrist ist abgelaufen. Nicht genügend Spieler angemeldet. Das Spiel wird nicht gestartet.');
                         aktiveAnmeldungen.delete(channel);
                     } else {
-                        client.say(channel, `Die Anmeldefrist ist abgelaufen. ${pokerSpiel.pokerPlayers.size} Spieler sind angemeldet. Das Spiel wird bald starten.`);
+                        tmiClient.say(channel, `Die Anmeldefrist ist abgelaufen. ${pokerSpiel.pokerPlayers.size} Spieler sind angemeldet. Das Spiel wird bald starten.`);
                         aktiveAnmeldungen.delete(channel);
-                        pokerSpiel.pokerSpiel(client, channel);
+                        pokerSpiel.pokerSpiel(tmiClient, channel);
                     }
                 }
             }, 15000);
@@ -748,34 +489,43 @@ client.on('chat', async (channel, user, message, self) => {
         if (command === '!joinpoker') {
             if (aktiveAnmeldungen.has(channel)) {
                 if (aktiveAnmeldungen.get(channel).startTime > aktiveAnmeldungen.get(channel).endTime) {
-                    client.say(channel, 'Derzeit gibt es keine offene Lobby. Du kannst nicht beitreten.');
+                    tmiClient.say(channel, 'Derzeit gibt es keine offene Lobby. Du kannst nicht beitreten.');
                     return;
                 }
 
-                if (aktiveAnmeldungen.get(channel).pokerPlayers.has(user.username)) {
-                    client.say(channel, 'Du bist bereits angemeldet.');
+                if (aktiveAnmeldungen.get(channel).pokerPlayers.has(tags.username)) {
+                    tmiClient.say(channel, 'Du bist bereits angemeldet.');
                 } else {
-                    aktiveAnmeldungen.get(channel).pokerPlayers.add(user.username);
-                    client.say(channel, `${user.username} hat sich für das Poker-Spiel angemeldet.`);
+                    aktiveAnmeldungen.get(channel).pokerPlayers.add(tags.username);
+                    tmiClient.say(channel, `${tags.username} hat sich für das Poker-Spiel angemeldet.`);
                 }
             }
         }
 
         if (command === '!leavepoker') {
             if (aktiveAnmeldungen.has(channel)) {
-                if (aktiveAnmeldungen.get(channel).pokerPlayers.has(user.username)) {
-                    aktiveAnmeldungen.get(channel).pokerPlayers.delete(user.username);
-                    client.say(channel, `${user.username} hat das Poker-Spiel verlassen.`);
+                if (aktiveAnmeldungen.get(channel).pokerPlayers.has(tags.username)) {
+                    aktiveAnmeldungen.get(channel).pokerPlayers.delete(tags.username);
+                    tmiClient.say(channel, `${tags.username} hat das Poker-Spiel verlassen.`);
                 } else {
-                    client.say(channel, `${user.username} ist nicht für das Poker-Spiel angemeldet.`);
+                    tmiClient.say(channel, `${tags.username} ist nicht für das Poker-Spiel angemeldet.`);
                 }
             } else {
-                client.say(channel, `${user.username}, aktuell ist keine Partie geplant.`);
+                tmiClient.say(channel, `${tags.username}, aktuell ist keine Partie geplant.`);
             }
         }
 
         if (command === '!whisperme'){
-            client.whisper(user.username, "Na du schelm? Gefaellt dir das?");
+            var fromUserId = tags['user-id'];
+
+            /** curl -X POST 'https://api.twitch.tv/helix/whispers?from_user_id=12826&to_user_id=141981764' \
+            *    -H 'Authorization: Bearer ln6n5azzuliqq57gmncybxrno4fy' \
+            *   -H 'Client-Id: hof5gwx0su6onys0nyan9c87zr6t'
+            *   -d '{"message":"Hello, friend!"}'
+            */
+
+            console.log("Da flüstert wer mit mir ...", fromUserId);
+            tmiClient.whisper(tags.username, "Na du schelm? Gefaellt dir das?");
         }
         
         if (command === '!refresh_timer'){
@@ -789,83 +539,69 @@ client.on('chat', async (channel, user, message, self) => {
         if (command === '!setgame'){
             
         }
+        if (command === '!getBlister'){
+            
+            const result = await sql.query`SELECT TOP 5 id FROM tbl_cards ORDER BY NEWID()`;
+            blisterCards = result.recordset.map(row => row.id);
+
+            console.log('Blister gesetzt');
+            if(activeWsClients !=[] ){
+                helper.sendAll({"cmd":"alert", "triggerName":"basicBlister", "blisterCards":blisterCards});
+            }
+        }
+
         /** OVERLAY - TRIGGER */
-        if (videoCommands[command]) {
+        if (videoCommands[command] || audioCommands[command]) {
             console.log("Trigger erkannt: ", command);
-            // Nur den Dateinamen senden
-            const videoFile = videoCommands[command];
-            if(activeWsClients != [] ){
-                sendAll({"cmd":"trigger", "triggerName":videoFile});
+            const triggerFile = videoCommands[command] || audioCommands[command];
+            if (activeWsClients.length > 0) {
+                helper.sendAll(activeWsClients, { "cmd": "trigger", "triggerName": triggerFile });
             }
-        } else if (audioCommands[command]) {
-            // Nur den Dateinamen senden
-            const audioFile = audioCommands[command];
-            if(activeWsClients != [] ){
-                sendAll({"cmd":"trigger", "triggerName":audioFile});
-            }
-        } 
+        }
+        
     }
 
     // Überprüfe, ob die Nachricht einen Trigger als eigenständiges Wort enthält
-    const words = message.split(/\s+/);
+    if (Object.keys(videoTrigger).some(trigger => message.includes(trigger))) {
+        // Ein automatischer Trigger wurde erkannt
+        const triggerFile = videoTrigger[message.split(' ').find(word => videoTrigger[word])];
+        if (activeWsClients.length > 0) {
+            helper.sendAll(activeWsClients, { "cmd": "trigger", "triggerName": triggerFile });
+        }
+    }
     
-    console.log(words);
-
-    for (const [trigger, keyword] of Object.entries(videoTrigger)) {
-        const occurrences = words.filter(word => word === trigger).length;
-        if (occurrences > 0) {
-            console.log('TRIGGER GEFUNDEN: ', trigger);
-            console.log('KEYWORD WIRD GESENDET: ', keyword);
-            if(activeWsClients != [] ){
-                sendAll({"cmd":"trigger", "triggerName": keyword});
-            }; // Beende die Schleife nach dem ersten gefundenen Trigger
-        }
-    }
-
-    for (const [trigger, keyword] of Object.entries(emoteTrigger)) {
-        const occurrences = words.filter(word => word === trigger).length;
-        if (occurrences > 0) {
-            console.log(`TRIGGER GEFUNDEN: ${trigger} (${occurrences} Mal)`);
-            console.log(`KEYWORD WIRD GESENDET: ${keyword} (${occurrences} Mal)`);
-            if(activeWsClients != [] ){
-                for (let i = 0; i < occurrences; i++) {
-                    sendAll({"cmd":"trigger", "triggerName":keyword});
-                }
-            }
-        }
-    }
 });
 
+
+/*SERVERSTART*/
+
 httpsServer.listen(port, () => {
-    
     setInterval(async () => {
-        
         const track = await spotify.getCurrentTrack();
         
-        if (track.cmd  == 'notPlaying'){
-            
-            sendAll(track);
-
-        }else if (track) {
-            const currentTrackJson = '/app/views/spotify/info/current_track.json';
-
-            let existingTrack = null;
-            
-            if (fs.existsSync(currentTrackJson)) {
-                existingTrack = JSON.parse(fs.readFileSync(currentTrackJson, 'utf8')).track;
-
-            }
-            if (JSON.stringify(existingTrack.trackName) !== JSON.stringify(track.trackName)) {
-
-                sendAll({"cmd":"trackUpdate", "trackInfo": track });
-                fs.writeFileSync(currentTrackJson, JSON.stringify({ track: track }));
-                console.log(`Aktueller Song aktualisiert: ${JSON.stringify(track)}`);
-            } else {
-                console.log('Kein neuer Song, keine Aktualisierung notwendig.');
-            }
+        console.log('Spotify-Track-Data: ', track);
         
+        if (track.cmd === 'notPlaying') {
+
+            console.log(`<app.js 585 Not playing>`);
+            helper.sendAll(activeWsClients, track);
+
+        } else if (track) {
+            // Pfad zur Datei, in die die Track-Daten gespeichert werden sollen
+            const currentTrackJson = '/app/views/spotify/info/current_track.json';
+            
+            try {
+                // Track-Daten in die JSON-Datei schreiben
+                fs.writeFileSync(currentTrackJson, JSON.stringify({ track: track }, null, 2), 'utf8');
+                console.log(`Track-Daten wurden in ${currentTrackJson} gespeichert.`);
+                helper.sendAll(activeWsClients, {
+                    "cmd": "trackUpdate",
+                    "data": JSON.stringify({ track: track })
+                });
+            } catch (error) {
+                console.error('Fehler beim Schreiben der Datei:', error);
+            }
         }
     }, 15000); // 15 Sekunden Intervall
     
-    console.log(`HTTPS Server läuft auf Port ${port}`);
-});
+});    

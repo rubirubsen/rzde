@@ -239,73 +239,76 @@ function getRemainingTime() {
 
 async function getCurrentTrack() {
     
-    if(songProof != ''){
-        
-        console.log(songProof);
-
-    }try {    
+    try {
+        // Vergewissert sich, dass der Zugriffstoken vorhanden ist
         await ensureAccessToken();
+    
+        // Holt die aktuell abgespielte Spur
         const response = await axios.get('https://api.spotify.com/v1/me/player/currently-playing', {
             headers: {
                 Authorization: `Bearer ${access_token}`
             }
         });
+        console.log(`Response Data: ${response.data}`);
 
         const currentlyPlaying = response.data.item;
+        const currentlyPlayingStatus = response.data.is_playing;
+        let trackInfo;
         
-        if (!currentlyPlaying) {
-            
+        if (currentlyPlayingStatus === false || currentlyPlayingStatus === undefined ) {
+            // Falls nichts gespielt wird
             let cmd = 'notPlaying';
-            let trackInfo = 'Es wird derzeit nichts abgespielt.';
+            trackInfo = 'Es wird derzeit nichts abgespielt.';
             console.log('NO PLAYING NOTHING!');
-            return {cmd,trackInfo};
-
+            return { cmd, trackInfo };
+        }else{
+            trackInfo = (({ id, name, title }) => ({ id, name, title }))(currentlyPlaying);
+            console.log(`<spotify.js - 254 currently Playing>`, trackInfo);
         }
-
+        
+        
         const trackName = currentlyPlaying.name;
+        
+        console.log(`<spotify.js - 266> Currently Playing name: `, trackName);
         const artists = currentlyPlaying.artists;
-        const currentTrackFile = '/app/views/spotify/info/current_track.txt';
-        const currentArtistFile = '/app/views/spotify/info/current_artist.txt';
         const trackImage = `/app/views/spotify/info/current_image.jpg`;
         const artistNames = artists.map(artist => artist.name).join(', ');
-
-        if (songProof!= '') {
-            if(songProof!= trackName) {
-
+    
+        // Überprüfung von songProof
+        if (songProof !== '') {
+            if (songProof !== trackName) {
                 console.log('Song is not the same as proof!');
                 songProof = trackName;
-                
+    
                 const albumCover = currentlyPlaying.album.images[0].url;
-                const artistNames = artists.map(artist => artist.name).join(', ');
-
-                
-
+                const currentTrackFile = '/app/views/spotify/info/current_track.txt';
+                const currentArtistFile = '/app/views/spotify/info/current_artist.txt';
+    
                 fs.writeFileSync(currentTrackFile, trackName, 'utf8');
                 fs.writeFileSync(currentArtistFile, artistNames, 'utf8');
                 await downloadImage(albumCover, trackImage);
-
-            }else{
+    
+            } else {
                 console.log('Song is the same as proof!');
             }
-
-        }else{
-
+        } else {
             console.log('No SongProof yet!');
             songProof = trackName;
-            const artists = currentlyPlaying.artists;
             const albumCover = currentlyPlaying.album.images[0].url;
+            const fullInfo = `${trackName} - ${artistNames}`;
+            const fullTrackFile = '/app/views/spotify/info/full_info.txt';
             
-            const currentTrackFile = '/app/views/spotify/info/current_track.txt';
-            const currentArtistFile = '/app/views/spotify/info/current_artist.txt';
-            const trackImage = `/app/views/spotify/info/current_image.jpg`;
-
-            fs.writeFileSync(currentTrackFile, trackName, 'utf8');
-            fs.writeFileSync(currentArtistFile, artistNames, 'utf8');
+            // Dateien schreiben
+            fs.writeFileSync('/app/views/spotify/info/current_track.txt', trackName, 'utf8');
+            fs.writeFileSync('/app/views/spotify/info/current_artist.txt', artistNames, 'utf8');
+            fs.writeFileSync(fullTrackFile, fullInfo, 'utf8');
+    
+            // Bild herunterladen
             await downloadImage(albumCover, trackImage);
         }
-
-        return { trackName, artistNames,trackImage };
-
+    
+        return { trackName, artistNames, trackImage };
+    
     } catch (error) {
         if (error.response && error.response.status === 401) {
             console.log("Access-Token abgelaufen, erneuere das Token...");
@@ -313,8 +316,11 @@ async function getCurrentTrack() {
             return await getCurrentTrack();
         }
         console.log("ERROR: ", error);
+        fs.writeFileSync('/app/views/spotify/info/current_track.txt', "Not playing Music", 'utf8');
+        fs.writeFileSync('/app/views/spotify/info/current_artist.txt', "!sr for Songrequest", 'utf8');
         return 'Es gab ein Problem beim Abrufen der letzten Wiedergabe.';
     }
+    
 }
 
 async function getTrackById(trackId) {

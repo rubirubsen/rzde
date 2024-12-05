@@ -70,13 +70,14 @@
         overflow: hidden;
         white-space: nowrap;
         color: white;
-        width: fit-content;
+        width: 200px;
         margin-top: 3px;
         z-index: 3;
     }
     
     .bottomRowText{
         margin-top: 0px;
+        width: 200px;
     }
 
     .scrolling {
@@ -133,4 +134,23 @@
     .falling-emoji {
         animation: fall var(--fall-duration, 8s) ease-in forwards, 
                 bounce 4s ease-out var(--fall-duration, 8s);
+    }
+
+    #topRow p, #bottomRow p {
+        white-space: nowrap; /* Verhindert Zeilenumbruch */
+        overflow: hidden; /* Verhindert, dass der Text außerhalb des Containers sichtbar ist */
+        text-overflow: ellipsis; /* Optionale Ellipsen hinzufügen, wenn der Text zu lang ist */
+    }
+    
+    #topRow p.scrolling, #bottomRow p.scrolling {
+        animation: scroll-left 10s linear infinite; /* Scrollt den Text von links nach rechts */
+    }
+    
+    @keyframes scroll-left {
+        from {
+            transform: translateX(100%);
+        }
+        to {
+            transform: translateX(-100%);
+        }
     }

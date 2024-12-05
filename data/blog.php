@@ -50,14 +50,22 @@ $contentCode .= $postingDetail["content"].'</div>';
     <?php echo $contentCode; ?>
     <div class="thumbnail">
 
-    <?php if($postingDetail['mediaType'] === 'video'):?>
-        <video controls width='530px'><source src="<?php echo $postingDetail['imgUrl'] ?>" type='video/webm'>
-    <?php else: ?>
-        <img class="left" src="<?php echo $postingDetail["imgUrl"]?>">
-    <?php endif; ?>
+    <?php if($postingDetail['mediaType'] === 'video'): ?>
+    <video controls width='530px'>
+        <source src="<?php echo $postingDetail['imgUrl'] ?>" type='video/webm'>
+    </video>
+<?php elseif($postingDetail['mediaType'] === 'youtube'): ?>
+    <iframe width="560" height="315" src="<?php echo $postingDetail['imgUrl'] ?>" 
+            title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; 
+            clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+<?php else: ?>
+    <img class="left" src="<?php echo $postingDetail['imgUrl'] ?>">
+<?php endif; ?>
+
     </div>
-    <div class="tags" style="padding-top: 33.5em;position: absolute;z-index: inherit;width: fit-content;color: darkgrey;padding-left: 0.8em;font-size: 0.8em;">
-        TAGS COMING HERE SOON
+    <div class="tags" style="padding-top: 33.5em;position: absolute;z-index: 0;width: fit-content;color: darkgrey;padding-left: 0.8em;font-size: 0.8em;">
+        <?php echo $postingDetail['arrTags'] ?>
     </div>
     <div class="right">
         <h1><?php echo $postingDetail['titel'] ?></h1>

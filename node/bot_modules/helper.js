@@ -119,3 +119,37 @@ req.on('error', (e) => {
 req.write(data);
 req.end();
 }
+
+export function sendAll (activeWsClients,message) {
+    for (let i = 0; i < activeWsClients.length; i++) {
+        activeWsClients[i].ws.send(JSON.stringify(message)); // Zugriff auf ws
+    }
+
+}
+
+// Hilfsfunktion: Dateiinhalt lesen
+export function readFileContent(filePath) {
+    if (fs.existsSync(filePath)) {
+        return fs.readFileSync(filePath, 'utf8').trim();
+    }
+    return '';
+}
+
+// Hilfsfunktion: JSON-Daten erstellen und speichern
+export function saveToJson(filePath, data) {
+    const jsonData = JSON.stringify(data, null, 2);
+    fs.writeFileSync(filePath, jsonData, 'utf8');
+    console.log('Daten in JSON-Datei gespeichert:', filePath);
+}
+
+export function sendMessageToOverlay(message) {
+    // Suche den Client mit client_type === 'overlay'
+    const jarvisClient = clients.find(client => client.client_type === 'overlay');
+    
+    if (jarvisClient) {
+        jarvisClient.ws.send(JSON.stringify(message));
+        console.log("Nachricht an overlay gesendet:", message);
+    } else {
+        console.log("overlay ist nicht verbunden");
+    }
+}
