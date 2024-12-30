@@ -233,6 +233,7 @@
     "gefallen": { "type": "audio", "src": "../media/mp3/gefallen.mp3" },
     "howdareyou": { "type": "audio", "src": "../media/mp3/howdareyou.mp3" },
     "knock": { "type": "audio", "src": "../media/mp3/knock.mp3" },
+    "kompetenzteam": { "type": "audio", "src": "../media/mp3/kompetenzteam.mp3"},
     "nebenrisiken": { "type": "audio", "src": "../media/mp3/nebenrisiken.mp3" },
     "prost": { "type": "audio", "src": "../media/mp3/prost.mp3" },
     "startup": { "type": "audio", "src": "../media/mp3/startup.mp3" },
