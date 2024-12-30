@@ -112,3 +112,30 @@ async function refreshTokenFunction() {
         throw error;
     }
 }
+    // Funktion zum Abrufen der Kanalinfos
+export async function getChannelInfo(user) {
+    
+    const token = accessToken
+    
+    const url = `https://api.twitch.tv/helix/streams?user_login=${user}`;
+    const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Client-Id': clientId // Ersetze durch deinen Client ID
+    };
+
+    const response = await fetch(url, { headers });
+    const data = await response.json();
+    
+    if (data.data && data.data.length > 0) {
+        const streamInfo = data.data[0];
+        const category = streamInfo.game_name; // Die Kategorie des aktuellen Streams
+        const channelUrl = `https://www.twitch.tv/${user}`; // Kanal-URL
+        
+        return { channelUrl, category };
+
+    } else {
+
+        return null; // Falls der Stream offline ist
+
+    }
+}

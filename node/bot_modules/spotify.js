@@ -7,6 +7,7 @@ import path from 'path';
 
 dotenv.config();
 
+
 const sp_client_id = process.env.CLIENTID;
 const sp_client_secret = process.env.CLIENTSECRET;
 const sp_redirect_uri = 'https://rubizockt.de:3000/spotify/callback';
@@ -19,6 +20,13 @@ let refreshInMs = 5000;
 let refreshTokenTimer = null; 
 
 let code = md5('rubizockt'); //TODO: ein Codebegriff in .env einbauen
+
+
+export let recentlyPlayedTracks = {
+    tracks: [], // Array für gespeicherte Tracks
+    lastUpdated: null // Optional: Zeitstempel für die letzte Aktualisierung
+};
+
 const getTimestamp = () => {
     return new Date().toISOString().replace(/[:.]/g, '-');
 };
@@ -54,7 +62,7 @@ const downloadImage = async (url, imagePath) => {
 
 async function getAccessToken(req, res) {
     try {
-        const scope = 'user-read-playback-state user-modify-playback-state';
+        const scope = 'user-read-playback-state user-modify-playback-state user-read-recently-played';
         const queryParams = queryString.stringify({
             response_type: 'code',
             client_id: sp_client_id,
@@ -94,6 +102,54 @@ async function callbackProcess(req, res) {
     }
 }
 
+async function fetchRecentlyPlayedTracks() {
+    try {
+        console.log("Hole die zuletzt gespielten Tracks...");
+
+        const response = await axios({
+            method: 'get',
+            url: 'https://api.spotify.com/v1/me/player/recently-played?limit=50',
+            headers: {
+                Authorization: `Bearer ${access_token}` // Dein Spotify Access Token
+            }
+        });
+
+        const items = response.data.items;
+
+        if (items.length === 0) {
+            console.log("Keine kürzlich gespielten Tracks gefunden.");
+            recentlyPlayedTracks.tracks = [];
+            return;
+        }
+
+        // Verarbeite die Daten und speichere sie im globalen Objekt
+        recentlyPlayedTracks.tracks = items.map((item, index) => {
+            const track = item.track;
+            
+            // UTC-Zeit in lokale Zeit umwandeln
+            const playedAt = new Date(item.played_at);
+            const localTime = playedAt.toLocaleString('de-DE', {
+                timeZone: 'Europe/Berlin', // Zeitzone explizit angeben (MEZ/MESZ)
+                hour12: false, // 24-Stunden-Format
+                timeZoneName: 'short' // Zeitbezeichner wie "MEZ" oder "MESZ"
+            });
+        
+            return {
+                position: items.length - index, // Umgekehrte Reihenfolge (1 = zuletzt gespielt)
+                timePlayed: localTime, // Lokale Zeit anstelle von UTC
+                title: track.name,
+                artist: track.artists.map(artist => artist.name).join(", "),
+            };
+        });
+
+        recentlyPlayedTracks.lastUpdated = new Date().toISOString(); // Zeitstempel aktualisieren
+
+        console.log("Daten erfolgreich aktualisiert.");
+    } catch (error) {
+        console.error("Fehler beim Abrufen der zuletzt gespielten Tracks:", error.message);
+    }
+}
+
 function scheduleTokenRefresh(tokenData) {
     // Überprüfe, ob der refresh_token sich geändert hat
     if (tokenData.refresh_token && refresh_token !== tokenData.refresh_token) {
@@ -113,7 +169,19 @@ function scheduleTokenRefresh(tokenData) {
         console.log('Vorheriger Refresh-Token-Timer gelöscht.');
     }
 
-    refreshTokenTimer = setTimeout(refreshAccessToken, refreshInMs);
+    refreshTokenTimer = setTimeout(async () => {
+        try {
+            await refreshAccessToken();
+        } catch (err) {
+            console.error('Fehler beim automatischen Erneuern des Tokens:', err.message);
+            // Optional: Wiederholen nach einer Verzögerung, z. B. 30 Sekunden
+            setTimeout(() => {
+                console.log('Neuer Versuch, das Token zu erneuern...');
+                refreshAccessToken().catch(error => console.error('Fehler beim Wiederholungsversuch:', error.message));
+            }, 30000); // 30 Sekunden warten
+        }
+    }, refreshInMs);
+
     console.log('Neuer Timer für Token-Refresh gesetzt:', refreshInMs);
 }
 
@@ -163,7 +231,12 @@ async function ensureAccessToken() {
     const currentTime = Date.now();
     if (currentTime > start_time + refreshInMs) {
         console.log("Access Token abgelaufen oder bald abgelaufen, erneuere es...");
-        await refreshAccessToken();
+        try {
+            await refreshAccessToken();
+            console.log('Token erneuert.');
+        } catch (err) {
+            console.error('Fehler beim Erneuern des Tokens:', err.message);
+        }
     }
 }
 
@@ -220,6 +293,17 @@ async function addToQueue(trackId) {
         console.error('Fehler beim Hinzufügen des Tracks zur Queue:', error);
         throw error;
     }
+}
+
+function getStoredRecentlyPlayedTracks() {
+    if (recentlyPlayedTracks.tracks.length === 0) {
+        console.log("Keine gespeicherten Tracks verfügbar.");
+        return;
+    }else{
+        return recentlyPlayedTracks;
+    }
+
+    
 }
 
 function getRemainingTime() {
@@ -312,7 +396,14 @@ async function getCurrentTrack() {
     } catch (error) {
         if (error.response && error.response.status === 401) {
             console.log("Access-Token abgelaufen, erneuere das Token...");
-            await refreshAccessToken();
+            
+            try {
+                await refreshAccessToken();
+                console.log('Token erneuert.');
+            } catch (err) {
+                console.error('Fehler beim Erneuern des Tokens:', err.message);
+            }
+
             return await getCurrentTrack();
         }
         console.log("ERROR: ", error);
@@ -352,4 +443,4 @@ function extractTrackIdFromUrl(url) {
     return urlMatch ? urlMatch[1] : null;
 }
 
-export { addToQueue, callbackProcess, getAccessToken, refreshAccessToken, searchForTrack, getRemainingTime, getCurrentTrack, getTrackById, extractTrackIdFromUrl };
+export { addToQueue, callbackProcess, fetchRecentlyPlayedTracks, getStoredRecentlyPlayedTracks, getAccessToken, refreshAccessToken, searchForTrack, getRemainingTime, getCurrentTrack, getTrackById, extractTrackIdFromUrl };

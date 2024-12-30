@@ -139,7 +139,11 @@ if(isset($_GET['uid'])) {
             switch (message.cmd) {
                 case 'trackUpdate':
                     if (trackInfo) {
-                       
+                        
+                        if(trackInfoDiv.style.visibility = 'hidden'){
+                            trackInfoDiv.style.visibility = 'visible';
+                        }
+
                         console.log('Neuer Titel:', trackInfo.trackName);
 
                         // Überprüfe, ob der Titel sich geändert hat
@@ -168,11 +172,7 @@ if(isset($_GET['uid'])) {
 
                     console.log('Track nicht abgespielt');
 
-                    if (playerDiv) {
-
-                        playerDiv.remove();  // Entferne das Player-Element
-
-                    }
+                    trackInfoDiv.style.visibility = 'hidden';
 
                     break;
 

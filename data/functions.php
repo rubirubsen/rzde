@@ -15,7 +15,7 @@ function getSpotifyAuth(){
         ]
     ); 
     echo "<pre>";
-    var_dump($authorize_url);
+    //var_dump($authorize_url);
     echo "</pre>";
     
     header('Location: ' . $authorizeUrl);

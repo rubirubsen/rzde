@@ -55,7 +55,6 @@ const videoCommands = JSON.parse(fs.readFileSync('./datasets/videoCommands.json'
 const audioCommands = JSON.parse(fs.readFileSync('./datasets/audioCommands.json', 'utf-8'));
 const videoTrigger = JSON.parse(fs.readFileSync('./datasets/videoTrigger.json', 'utf-8'));
 const emoteTrigger = JSON.parse(fs.readFileSync('./datasets/emoteTrigger.json', 'utf-8'));
-const filePaths = JSON.parse(fs.readFileSync('./datasets/filePaths.json', 'utf-8'));
 
 const tmiClient = new tmi.client(twitchConfig);
 const httpsServer = https.createServer(options, app);
@@ -73,6 +72,14 @@ app.use(express.json());
 // Middleware zum Parsen von URL-kodierten Formulardaten
 app.use(express.urlencoded({ extended: true })); 
 
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Promise Rejection:', reason);
+});
+
+let recentlyPlayedTracks = {
+    tracks: [], // Array für gespeicherte Tracks
+    lastUpdated: null // Optional: Zeitstempel für die letzte Aktualisierung
+};
 
 /** Websocket Logik */
 wss.on('connection', function connection(ws, req) {
@@ -150,17 +157,31 @@ app.get('/spotify/callback', async (req, res) => {
 
 app.get('/spotify/info/track', async (req, res) => {
     try {
-        const trackName = readFileContent(filePaths.track);
+        const trackFilePath = '/app/views/spotify/info/current_track.txt';
+        const jsonFilePath = '/app/views/spotify/info/current_track.json';
+
+        let trackName = '';
+
+        if (fs.existsSync(trackFilePath)) {
+            trackName = fs.readFileSync(trackFilePath, 'utf8').trim();
+        }
 
         if (trackName) {
-            const currentTrackData = { trackName };
-            helper.saveToJson(filePaths.json, currentTrackData); // Optional, falls der Track-Name separat gespeichert werden soll
-            res.json({ trackName });
+            const currentTrackData = {
+                trackName: trackName
+            };
+
+            const jsonData = JSON.stringify(currentTrackData, null, 2);
+
+            fs.writeFileSync(jsonFilePath, jsonData, 'utf8');
+            console.log('Aktuelle Track-Daten in JSON-Datei gespeichert');
+            res.json(trackName);
         } else {
             res.status(404).json({ error: 'Keine aktuellen Track-Daten verfügbar' });
         }
+
     } catch (error) {
-        console.error('Fehler:', error);
+        console.error('Fehler beim Lesen oder Speichern der Track-Daten:', error);
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
 });
@@ -188,10 +209,10 @@ app.get('/spotify/info/artist', async(req, res) => {
             console.log('Aktuelle Track-Daten in JSON-Datei gespeichert');
             res.json(artistNames);
         } else {
-            res.status(404).json({ error: 'Keine aktuellen Track-Daten verfügbar' });
+            res.status(404).json({ error: 'Keine aktuellen Artist-Daten verfügbar' });
         }
     } catch (error) {
-        console.error('Fehler beim Lesen oder Speichern der Track-Daten:', error);
+        console.error('Fehler beim Lesen oder Speichern der Artist-Daten:', error);
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
 
@@ -233,6 +254,34 @@ app.get('/spotify/info/json', async(req, res) => {
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
 
+});
+
+app.get('/spotify/info/lastPlayed', async (req, res) => {
+    try {
+        // Wenn die Tracks noch nicht abgerufen wurden, hole sie
+        if (spotify.recentlyPlayedTracks.tracks.length === 0) {
+            console.log('Tracks werden abgerufen...');
+            await spotify.fetchRecentlyPlayedTracks();
+        }
+
+        // Hole die gespeicherten Tracks
+        const tracks = spotify.getStoredRecentlyPlayedTracks();
+
+        if (!tracks) {
+            return res.status(404).json({ message: 'Keine gespeicherten Tracks verfügbar.' });
+        }
+
+        // Sende die Tracks als JSON-Antwort zurück
+        res.json({
+            message: 'Erfolgreich abgerufen',
+            lastUpdated: tracks.lastUpdated,
+            tracks: tracks.tracks
+        });
+
+    } catch (error) {
+        console.error('Fehler beim Abrufen der zuletzt gespielten Tracks:', error);
+        res.status(500).json({ message: 'Fehler beim Abrufen der Daten', error: error.message });
+    }
 });
 
 
@@ -387,7 +436,10 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
             }
 
         }
-
+        if (command === '!lastplayed'){
+            let username = tags.username;
+            tmiClient.say(channel, `${username}, die komplette Playlist der bisher gehörten Songs findest du hier: https://rubizockt.de:3000/spotify/info/lastPlayed`);
+        }
         if (command === '!sr') {
 
             try{
@@ -431,6 +483,29 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
             tmiClient.say(channel, "Test");
         }
 
+        if (command === '!so') {
+            
+            let twitchUser = args.slice(1).join(' ');
+            
+            console.log(`SHOUTOUT AN ${twitchUser}`);
+
+            if (!twitchUser) {
+                tmiClient.say(channel, "Bitte gib einen Twitch-Nutzernamen an.");
+                return;
+            }
+            
+            const channelInfo = await twitch.getChannelInfo(twitchUser);
+
+            if (channelInfo) {
+                tmiClient.say(channel, `Shoutout an ${twitchUser}! Schaut vorbei auf: ${channelInfo.channelUrl} | Aktuelle Kategorie: ${channelInfo.category}`);
+                tmiClient.say(channel, `/shoutout ${twitchUser}`);
+
+            } else {
+                tmiClient.say(channel, `Leider ist ${twitchUser} aktuell offline.`);
+            }
+
+        }
+
         if (command === '!followage') {
             helper.getTwitchBearerToken(tags.username, twitchClient, twitchSecret).then(data => {
                 const bearT = data.bearerToken;
@@ -448,6 +523,7 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
         }
 
         if (command === '!poker') {
+
             let pokerSpiel = new Poker(channel);
             aktiveAnmeldungen.set(channel, pokerSpiel);
             console.log(aktiveAnmeldungen);
@@ -484,6 +560,7 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
                     }
                 }
             }, 15000);
+            
         }
 
         if (command === '!joinpoker') {
@@ -540,7 +617,7 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
             
         }
         if (command === '!getBlister'){
-            
+            await sql.connect(authConfig);
             const result = await sql.query`SELECT TOP 5 id FROM tbl_cards ORDER BY NEWID()`;
             blisterCards = result.recordset.map(row => row.id);
 
@@ -576,32 +653,42 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
 /*SERVERSTART*/
 
 httpsServer.listen(port, () => {
+    
     setInterval(async () => {
-        const track = await spotify.getCurrentTrack();
-        
-        console.log('Spotify-Track-Data: ', track);
-        
-        if (track.cmd === 'notPlaying') {
-
-            console.log(`<app.js 585 Not playing>`);
-            helper.sendAll(activeWsClients, track);
-
-        } else if (track) {
-            // Pfad zur Datei, in die die Track-Daten gespeichert werden sollen
-            const currentTrackJson = '/app/views/spotify/info/current_track.json';
+        try {
             
-            try {
-                // Track-Daten in die JSON-Datei schreiben
-                fs.writeFileSync(currentTrackJson, JSON.stringify({ track: track }, null, 2), 'utf8');
-                console.log(`Track-Daten wurden in ${currentTrackJson} gespeichert.`);
-                helper.sendAll(activeWsClients, {
-                    "cmd": "trackUpdate",
-                    "data": JSON.stringify({ track: track })
-                });
-            } catch (error) {
-                console.error('Fehler beim Schreiben der Datei:', error);
+            const track = await spotify.getCurrentTrack();
+            recentlyPlayedTracks = await spotify.fetchRecentlyPlayedTracks();
+
+            if (track === undefined || track === '') {
+                console.log('ERROR: Aktuell keine Songinformationen verfügbar');
+                helper.sendAll(activeWsClients, { "cmd": "notPlaying" });
+            } else {
+                console.log('Spotify-Track-Data: ', track);
             }
+    
+            if (track && track.cmd === 'notPlaying') {
+                console.log(`<app.js 585 Not playing>`);
+                helper.sendAll(activeWsClients, track);
+            } else if (track !== '') {
+                const currentTrackJson = '/app/views/spotify/info/current_track.json';
+                try {
+                    fs.writeFileSync(currentTrackJson, JSON.stringify({ track: track }, null, 2), 'utf8');
+                    console.log(`Track-Daten wurden in ${currentTrackJson} gespeichert.`);
+                    helper.sendAll(activeWsClients, {
+                        "cmd": "trackUpdate",
+                        "data": JSON.stringify({ track: track })
+                    });
+                } catch (error) {
+                    console.error('Fehler beim Schreiben der Datei:', error);
+                }
+            }
+        } catch (error) {
+            console.error('Fehler in setInterval:', error);
         }
     }, 15000); // 15 Sekunden Intervall
     
+    
 });    
+
+
