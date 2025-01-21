@@ -68,7 +68,6 @@ function loadUserCards() {
     .then(text => {
         const data = JSON.parse(text); // Parse die Antwort
         const cards = data.cards || []; // Zugriff auf das cards-Array
-        console.log("Karten gefunden:", cards);
         
         // Hier setzen wir alle Karten zurück
         $(".hiddenCard").addClass("animated"); 

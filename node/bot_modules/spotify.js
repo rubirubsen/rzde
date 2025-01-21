@@ -54,7 +54,6 @@ const downloadImage = async (url, imagePath) => {
         });
 
         response.data.pipe(fs.createWriteStream(imagePath));
-        console.log(`Bild wurde erfolgreich unter ${imagePath} gespeichert.`);
     } catch (error) {
         console.error('Fehler beim Herunterladen oder Speichern des Bildes:', error);
     }
@@ -104,7 +103,6 @@ async function callbackProcess(req, res) {
 
 async function fetchRecentlyPlayedTracks() {
     try {
-        console.log("Hole die zuletzt gespielten Tracks...");
 
         const response = await axios({
             method: 'get',
@@ -144,7 +142,6 @@ async function fetchRecentlyPlayedTracks() {
 
         recentlyPlayedTracks.lastUpdated = new Date().toISOString(); // Zeitstempel aktualisieren
 
-        console.log("Daten erfolgreich aktualisiert.");
     } catch (error) {
         console.error("Fehler beim Abrufen der zuletzt gespielten Tracks:", error.message);
     }
@@ -154,7 +151,6 @@ function scheduleTokenRefresh(tokenData) {
     // Überprüfe, ob der refresh_token sich geändert hat
     if (tokenData.refresh_token && refresh_token !== tokenData.refresh_token) {
         refresh_token = tokenData.refresh_token;
-        console.log('Neuer Refresh Token gespeichert:', refresh_token);
     }
 
     access_token = tokenData.access_token;  // Access-Token immer aktualisieren
@@ -295,6 +291,89 @@ async function addToQueue(trackId) {
     }
 }
 
+async function skipTrack() {
+    console.log('Überspringe den aktuellen Track...');
+    try {
+        await axios({
+            method: 'post',
+            url: 'https://api.spotify.com/v1/me/player/next',
+            headers: {
+                Authorization: `Bearer ${access_token}`
+            }
+        });
+
+        console.log('Track wurde übersprungen');
+        
+    } catch (error) {
+        console.error('Fehler beim Überspringen des Tracks:', error);
+        throw error;
+    }
+}
+
+async function stopTrack() {
+    console.log('Stoppe die Wiedergabe des aktuellen Tracks...');
+    
+    try {
+        await axios({
+            method: 'put',
+            url: 'https://api.spotify.com/v1/me/player/pause',
+            headers: {
+                Authorization: `Bearer ${access_token}`
+            }
+        });
+
+        console.log('Track wurde gestoppt');
+        
+    } catch (error) {
+        console.error('Fehler beim Stoppen des Tracks:', error);
+        throw error;
+    }
+}
+
+async function startPlaying() {
+    console.log('Fortsetzen der Wiedergabe...');
+    
+    try {
+        await axios({
+            method: 'put',
+            url: 'https://api.spotify.com/v1/me/player/play',
+            headers: {
+                Authorization: `Bearer ${access_token}`
+            }
+        });
+
+        console.log('Wiedergabe wurde fortgesetzt');
+        
+    } catch (error) {
+        console.error('Fehler beim Fortsetzen der Wiedergabe:', error);
+        throw error;
+    }
+}
+
+async function setVolume(value) {
+    if (value < 0 || value > 100) {
+        throw new Error('Lautstärkewert muss zwischen 0 und 100 liegen');
+    }
+
+    console.log(`Setze die Lautstärke auf ${value}...`);
+
+    try {
+        await axios({
+            method: 'put',
+            url: `https://api.spotify.com/v1/me/player/volume?volume_percent=${value}`,
+            headers: {
+                Authorization: `Bearer ${access_token}`
+            }
+        });
+
+        console.log(`Lautstärke wurde auf ${value} gesetzt`);
+        
+    } catch (error) {
+        console.error('Fehler beim Setzen der Lautstärke:', error);
+        throw error;
+    }
+}
+
 function getStoredRecentlyPlayedTracks() {
     if (recentlyPlayedTracks.tracks.length === 0) {
         console.log("Keine gespeicherten Tracks verfügbar.");
@@ -333,7 +412,6 @@ async function getCurrentTrack() {
                 Authorization: `Bearer ${access_token}`
             }
         });
-        console.log(`Response Data: ${response.data}`);
 
         const currentlyPlaying = response.data.item;
         const currentlyPlayingStatus = response.data.is_playing;
@@ -347,13 +425,11 @@ async function getCurrentTrack() {
             return { cmd, trackInfo };
         }else{
             trackInfo = (({ id, name, title }) => ({ id, name, title }))(currentlyPlaying);
-            console.log(`<spotify.js - 254 currently Playing>`, trackInfo);
         }
         
         
         const trackName = currentlyPlaying.name;
         
-        console.log(`<spotify.js - 266> Currently Playing name: `, trackName);
         const artists = currentlyPlaying.artists;
         const trackImage = `/app/views/spotify/info/current_image.jpg`;
         const artistNames = artists.map(artist => artist.name).join(', ');
@@ -424,11 +500,6 @@ async function getTrackById(trackId) {
             }
         });
 
-        if(trackData){
-            console.log("Künstler: ", trackData.data.artists[0].name); // Da ist es klar!
-            console.log("Titel: ", trackData.data.name);
-        }
-
         return trackData.data; // Nur die Track-Daten zurückgeben
     } catch (error) {
         console.error('Fehler beim Abrufen des Tracks:', error);
@@ -443,4 +514,4 @@ function extractTrackIdFromUrl(url) {
     return urlMatch ? urlMatch[1] : null;
 }
 
-export { addToQueue, callbackProcess, fetchRecentlyPlayedTracks, getStoredRecentlyPlayedTracks, getAccessToken, refreshAccessToken, searchForTrack, getRemainingTime, getCurrentTrack, getTrackById, extractTrackIdFromUrl };
+export { addToQueue, callbackProcess, fetchRecentlyPlayedTracks, getStoredRecentlyPlayedTracks, getAccessToken, refreshAccessToken, searchForTrack, getRemainingTime, getCurrentTrack, getTrackById, extractTrackIdFromUrl, skipTrack, stopTrack,startPlaying, setVolume };

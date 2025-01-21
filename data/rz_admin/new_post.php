@@ -92,7 +92,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <label for="titel">Titel:</label>
         <input type="text" name="titel" required>
         
-        <label for="content">Inhalt:</label>
+        <label for="content">Inhalt(keine 'ul' oder 'li'):</label>
         <textarea name="content" rows="5" required></textarea>
         
         <label for="imgUrl">Bild-URL:</label>

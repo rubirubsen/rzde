@@ -118,7 +118,6 @@
     "erdbeerkäse": { "type": "audio", "src": "./media/mp3/erdbeerkäse.mp3" },
     "gurke": { "type": "audio", "src": "./media/mp3/gurke.mp3" },
     "internet": { "type": "audio", "src": "./media/mp3/internet.mp3" },
-    "knock": { "type": "audio", "src": "./media/mp3/knock.mp3" },
     "okgurke": { "type": "audio", "src": "./media/mp3/okgurke.mp3" },
     "sabbelnich": { "type": "audio", "src": "./media/mp3/sabbelnich.mp3" },
     "toasty": { "type": "audio", "src": "./media/mp3/toasty.mp3" },

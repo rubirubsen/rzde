@@ -15,8 +15,6 @@
             var imgHead = document.getElementById('imgHead');
             var rect = navBar.getBoundingClientRect();
             var rect2 =  imgHead.getBoundingClientRect();
-            console.log('navBar Top: ',rect.top);
-            console.log('HeadImg Top: ', rect2.top);
             if(rect2.top <= -167){
                 navBar.classList.add('sticky');
             }else{

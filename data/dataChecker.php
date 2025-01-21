@@ -52,7 +52,7 @@
                 ];
             }
         }
-
+        
         // Alle erfassten Dateien aus Ordnern
         $allFolderFiles = [];
         foreach ($mediaEntries as $entry) {

@@ -1,0 +1,110 @@
+# Allgemeine Systemdateien
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs und Editor-Dateien
+.idea/
+.vscode/
+.atom/
+.bundle/
+.project
+.settings/
+
+# Logdateien
+*.log
+*.class
+*.pyc
+*.swp
+npm-debug.log
+yarn-error.log
+docker-compose.yml
+container-logs.txt
+logs/
+logs/nginx/access.log
+
+# Build- und Verzeichnisdateien
+node_modules/
+bower_components/
+coverage/
+build/
+dist/
+tmp/
+vendor/
+app/storage/
+data/vendor/*
+data/sql/
+
+# Node.js und npm spezifische Dateien
+node/
+node_modules/
+data/spotify/info/
+.env
+
+# SSH- und Zertifikatsdateien
+*.key
+*.pem
+*.ppk
+*.crt
+*.cer
+*.jks
+*.der
+*.pfx
+*.p12
+*.gpg
+*.asc
+*.gpg.enc
+*.p8.pem
+
+# Private Schlüssel
+id_rsa
+id_rsa.pub
+id_dsa
+id_dsa.pub
+id_ecdsa
+id_ecdsa.pub
+id_ed25519
+id_ed25519.pub
+
+# Konfigurationsdateien und andere private Dateien
+data/test.php
+data/test.php
+data/img/rz_transparent.png
+irc/conf/docker.motd
+irc/conf/config.sh
+irc/conf/links.sh
+irc/conf/opers.sh
+irc/conf/services.sh
+data/nodered/settings.js
+data/nodered/
+data/mysql/
+
+# Maven und Gradle
+target/
+.gradle/
+build/
+
+# Medien- und spezifische Daten
+data/media/
+./data/media/
+
+# OS-spezifische Dateien (Windows)
+*.exe
+*.pdb
+*.user
+*.csproj.user
+*.suo
+*.sln.docstates
+
+# Andere
+*.gpg
+*.enc
+*.pem
+*.key
+*.p12

@@ -10,15 +10,19 @@ import https from 'https';
 import http from 'http';
 import fs from 'fs';
 import sql from 'mssql';
+import { JSDOM } from 'jsdom';
+import cors from 'cors';
+import { v4 as uuidv4 } from 'uuid';  
 
-dotenv.config();
+dotenv.config()
+
+console.log(`ENV-TEST (NUTZER SA): ${process.env.DB_USER}`);
 
 /** Express für API **/
 const express = (await import('express')).default;
 const app = express();
 const port = 3000;
 
-const overlayAuth = process.env.OVERLAY_SECRET;
 const authConfig = {
     user: process.env.DB_USER,
     password: process.env.DB_SECRET,
@@ -66,9 +70,16 @@ let socketClient;
 let activeWsClients = [];
 let blisterCards;
 let bohnencounter = 0;
+let skipVotes = new Set(); // Speichert User, die abgestimmt haben
+let votingActive = false; // Status der Abstimmung
 
-// Middleware zum Parsen von JSON-Daten
+
 app.use(express.json());
+app.use(cors({
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+  }));
+
+  
 // Middleware zum Parsen von URL-kodierten Formulardaten
 app.use(express.urlencoded({ extended: true })); 
 
@@ -83,25 +94,26 @@ let recentlyPlayedTracks = {
 
 /** Websocket Logik */
 wss.on('connection', function connection(ws, req) {
+
     const parameters = new URL(req.url, `http://${req.headers.host}`);
     const uid = parameters.searchParams.get('uid');
     const clientType = parameters.searchParams.get('client_type');  // Holen des client_type-Parameters
-    let hash = '';
     
     const ip = req.socket.remoteAddress;
     
     if (uid === process.env.OVERLAY_SECRET) {
-        
+        // Generiere eine eindeutige UUID für jede Verbindung
+        const uniqueId = uuidv4();  // Erstelle eine neue UUID
 
-        // Hashen der IP-Adresse
-        hash = crypto.createHash('sha256').update(ip).digest('hex');
-        ws.id = hash;  // Setze die ID auf den Hash der IP-Adresse
+        ws.id = uniqueId;  // Setze die UUID als die eindeutige ID des WebSockets
 
         // Speichere den clientType in der WebSocket-Instanz oder einer globalen Map
         ws.clientType = clientType;  // Dies hilft, den Client später zu identifizieren
 
-        activeWsClients.push({ id: hash, ws, clientType });  // Füge auch den clientType in die Datenstruktur ein
-        console.log(`[WS] Verbunden mit Rubi von IP: ${ip}, Client-Typ: ${clientType}. Somit haben wir folgende AKTIVEN clients via Websocket: ${activeWsClients}`);
+        // Füge die Verbindung zu den aktiven WebSocket-Clients hinzu
+        activeWsClients.push({ id: uniqueId, ws, clientType });  // Speichere die UUID und clientType
+
+        console.log(`[WS] Verbunden mit Rubi von IP: ${ip}, Client-Typ: ${clientType}. Damit haben wir ${activeWsClients.length} aktiven WS-Verbindungen. `);
 
     } else {
         ws.close();
@@ -110,9 +122,32 @@ wss.on('connection', function connection(ws, req) {
     }
     
     ws.on('message', function incoming(message) {
-        console.log('Nachricht erhalten:', message.toString());
-        // Reagiere auf die Nachricht
-        ws.send('Antwort vom Server: ' + message);
+        // Überprüfen, ob die empfangene Nachricht ein Buffer ist
+        if (Buffer.isBuffer(message)) {
+            message = message.toString();  // Buffer in String umwandeln
+        }
+        
+        console.log('Nachricht erhalten:', message);
+        
+        try {
+            // Wenn die Nachricht ein JSON-String mit escaped Anführungszeichen enthält
+            let messageData = JSON.parse(message);
+            
+            // Wenn 'msg' ein verschachteltes JSON ist, dekodiere es
+            if (messageData.msg) {
+                let innerMessage = messageData.msg;  // Das ist der inner JSON-String
+                
+                // Entferne die Escape-Zeichen und parse erneut
+                innerMessage = JSON.parse(innerMessage);  
+                
+                console.log('Innere Nachricht:', innerMessage);
+            }
+        } catch (error) {
+            console.error('Fehler beim Parsen der Nachricht:', error);
+        }
+        
+        // Sende die Nachricht zurück an den Server
+        ws.send(JSON.stringify({"cmdReceived": true, "msg": message}));
     });
 
     ws.isAlive = true;
@@ -120,7 +155,17 @@ wss.on('connection', function connection(ws, req) {
 
     ws.on('close', () => {
         console.log(`+++ WSS CLOSED +++`);
+        
+        // Berechne den hash aus der IP und clientType, genauso wie beim Hinzufügen
+        const ip = req.socket.remoteAddress;  // Hier musst du sicherstellen, dass die IP zugänglich ist
+        const clientType = ws.clientType;     // clientType aus der WebSocket-Instanz
+        
+        const hash = crypto.createHash('sha256').update(ip + clientType).digest('hex');
+        
+        // Filtere den Client aus dem activeWsClients-Array
         activeWsClients = activeWsClients.filter(client => client.id !== hash);
+        
+        console.log(`Entfernte CLIENT-ID: ${hash}`);
     });
 });
 
@@ -146,7 +191,7 @@ app.get('/health', async(req,res) => {
     res.status(200).send('ok');
 })
 
-/** Routen-Defintionen für Spotify-Auth **/
+/** Routen-Defintionen für SPOTIFY  **/
 app.get('/spotify/login', (req, res) => {
     spotify.getAccessToken(req,res)
 });
@@ -174,7 +219,6 @@ app.get('/spotify/info/track', async (req, res) => {
             const jsonData = JSON.stringify(currentTrackData, null, 2);
 
             fs.writeFileSync(jsonFilePath, jsonData, 'utf8');
-            console.log('Aktuelle Track-Daten in JSON-Datei gespeichert');
             res.json(trackName);
         } else {
             res.status(404).json({ error: 'Keine aktuellen Track-Daten verfügbar' });
@@ -244,7 +288,6 @@ app.get('/spotify/info/json', async(req, res) => {
 
             const jsonData = JSON.stringify(currentTrackData, null, 2);
             fs.writeFileSync(jsonFilePath, jsonData, 'utf8');
-            console.log('Aktuelle Track-Daten in JSON-Datei gespeichert');
             res.json(currentTrackData);
         } else {
             res.status(404).json({ error: 'Keine aktuellen Track-Daten verfügbar' });
@@ -260,7 +303,6 @@ app.get('/spotify/info/lastPlayed', async (req, res) => {
     try {
         // Wenn die Tracks noch nicht abgerufen wurden, hole sie
         if (spotify.recentlyPlayedTracks.tracks.length === 0) {
-            console.log('Tracks werden abgerufen...');
             await spotify.fetchRecentlyPlayedTracks();
         }
 
@@ -285,8 +327,7 @@ app.get('/spotify/info/lastPlayed', async (req, res) => {
 });
 
 
-
-/** Twitch - Bot - Routen **/
+/** Routen-Defintionen für TWITCH **/
 app.get('/twitch/login', async(req,res) => {
     twitch.twitchLogin(req,res);
 });
@@ -366,7 +407,6 @@ app.post('/overlay/control/command', (req, res) => {
 
 /** WEBSEITEN - AUTH - Route */
 app.post('/auth/login', async (req, res) => {
-    console.log(req.body);
     const { username, password } = req.body;
 
     if (!username || !password) {
@@ -408,13 +448,11 @@ tmiClient.on('connected', (address, port) => {
 tmiClient.on('chat', async (channel, tags, message, self) => {
     if (self) return;
     
-    console.log(tags, message);
-    
     if (tags.bits) {
         const bits = parseInt(tags.bits);
         if (bits >= 1) {
             const msg = `${tags.username} hat ${bits} Bits gespendet!`;
-            console.log(msg);
+            console.log('BIIIIIIIIIIIIIIITS: ',msg);
         }
     }
     
@@ -422,13 +460,105 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
 
         let args = message.split(' ');
         const command = args[0];
+        
+        if (command === '!setVolume') {
+            let volumeValue = args[1]; // Holt das Argument, das die Lautstärke angibt
+        
+            // Überprüfe, ob das Argument eine Zahl ist und zwischen 0 und 100 liegt
+            volumeValue = parseInt(volumeValue, 10);
+        
+            if (isNaN(volumeValue) || volumeValue < 0 || volumeValue > 100) {
+                return;
+            }
+        
+            if (tags.username === 'rubizockt') {
+                try {
+                    await spotify.setVolume(volumeValue);
+                } catch (error) {
+                }
+            } else {
+                tmiClient.say(channel, `${tags.username}, das hast Du leider nicht zu entscheiden.`);
+            }
+        }
+
+        if (command === '!skip') {
+            if (tags.username === 'rubizockt') {
+                // Admin: Direkt skippen
+                try {
+                    await spotify.skipTrack();
+                } catch (error) {
+                    console.log('Fehler beim Skippen:', error);
+                }
+            } else {
+                // Zuschauer-Abstimmung
+                if (!votingActive) {
+                    votingActive = true;
+                    const viewerCount = await twitch.getViewerCount();
+                    console.log(viewerCount);
+                    const requiredPercentage = helper.getRequiredVotesPercentage(viewerCount);
+                    const requiredVotes = Math.ceil(viewerCount * requiredPercentage);
+    
+                    tmiClient.say(channel, `Abstimmung gestartet! ${requiredVotes} Stimmen benötigt.`);
+                    setTimeout(async () => {
+                        if (skipVotes.size >= requiredVotes) {
+                            tmiClient.say(channel, 'Genügend Stimmen! Song wird übersprungen...');
+                            try {
+                                await spotify.skipTrack();
+                            } catch (error) {
+                                console.log('Fehler beim Skippen:', error);
+                            }
+                        } else {
+                            tmiClient.say(
+                                channel,
+                                `Abstimmung fehlgeschlagen: Nur ${skipVotes.size} von ${requiredVotes} Stimmen.`
+                            );
+                        }
+                        skipVotes.clear();
+                        votingActive = false;
+                    }, 10000); // 10 Sekunden warten
+                }
+    
+                if (!skipVotes.has(tags.username)) {
+                    skipVotes.add(tags.username);
+                    tmiClient.say(
+                        channel,
+                        `${tags.username} hat abgestimmt! (${skipVotes.size} Stimmen)`
+                    );
+                } else {
+                    tmiClient.say(
+                        channel,
+                        `${tags.username} hat bereits abgestimmt.`
+                    );
+                }
+            }
+        }
+
+        if (command === '!pause'){
+            if(tags.username === 'rubizockt'){
+                try {
+                    await spotify.stopTrack();
+                    
+                }catch (error) {
+                    console.log('Fehler beim Stoppen:', error);
+                }
+             }
+        }
+
+        if (command === '!play'){
+            if(tags.username === 'rubizockt'){
+                try {
+                    await spotify.startPlaying();
+                    
+                }catch (error) {
+                    console.log('Fehler beim Abspielen:', error);
+                } 
+             }
+        }
 
         if (command === '!songinfo') {
 
             try {
                 let { trackName, artistNames } = await spotify.getCurrentTrack();
-                console.log("title: ", trackName);
-                console.log("artist: ", artistNames);
                 tmiClient.say(channel, `Ihr hört ${trackName} von ${artistNames}.`);
             } catch (error) {
                 console.error("Fehler beim Abrufen der Songinformationen:", error);
@@ -436,10 +566,12 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
             }
 
         }
+
         if (command === '!lastplayed'){
             let username = tags.username;
             tmiClient.say(channel, `${username}, die komplette Playlist der bisher gehörten Songs findest du hier: https://rubizockt.de:3000/spotify/info/lastPlayed`);
         }
+
         if (command === '!sr') {
 
             try{
@@ -463,15 +595,12 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
                 
                 if (tags.username === 'bohnenkrautsaft'){
                     bohnencounter++;
-                    console.log("Bohnenkrautsaft hat heute schon", bohnencounter, "Songs eingefügt");
                     trackId = await spotify.addToQueue(trackId);
                     let track = await spotify.getTrackById(trackId);
                     tmiClient.say(channel, `Ich habe ${track.name}  eingefügt in die Warteschlange. Bohnenkrautsaft hat schon ${bohnencounter} Songs eingefügt`);	
                 }else{
                     trackId = await spotify.addToQueue(trackId);
-                    console.log('TRACKID: ', trackId);
                     let track = await spotify.getTrackById(trackId);
-                    console.log('TRACK-TRACK: ',track);
                     tmiClient.say(channel, `Ich habe ${track.name} eingefügt in die Warteschlange.`);
                 }
             } catch (error) {
@@ -479,21 +608,15 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
             }
         }
 
-        if (command === '!demotest') {
-            tmiClient.say(channel, "Test");
-        }
-
         if (command === '!so') {
-            
+
             let twitchUser = args.slice(1).join(' ');
-            
-            console.log(`SHOUTOUT AN ${twitchUser}`);
 
             if (!twitchUser) {
                 tmiClient.say(channel, "Bitte gib einen Twitch-Nutzernamen an.");
                 return;
             }
-            
+
             const channelInfo = await twitch.getChannelInfo(twitchUser);
 
             if (channelInfo) {
@@ -507,10 +630,10 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
         }
 
         if (command === '!followage') {
-            helper.getTwitchBearerToken(tags.username, twitchClient, twitchSecret).then(data => {
+            twitch.getTwitchBearerToken(tags.username, twitchClient, twitchSecret).then(data => {
                 const bearT = data.bearerToken;
-                helper.getUserInfo(twitchClient, bearT, data.username).then(userData => {
-                    helper.getFollowDate(userData.clientId, userData.accessToken, userData.userId).then(data => {
+                twitch.getUserInfo(twitchClient, bearT, data.username).then(userData => {
+                    twitch.getFollowDate(userData.clientId, userData.accessToken, userData.userId).then(data => {
                         const followedDate = new Date(data.followDate);
                         const formattedDate = followedDate.toLocaleDateString('de-DE');
                         const response = 'Du folgst seit: ' + formattedDate;
@@ -522,12 +645,30 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
             });
         }
 
+        if (command === '!news') {
+
+            tmiClient.say(channel, `🧐 Moment mal, ich checke, was es Neues gibt! 📰`);
+            
+            const rawTitles = await helper.getRssFeed();
+            setTimeout(() => {
+                tmiClient.say(channel, `Da hab ich es schon! 🚀 Ich werfe das schnell auf's Overlay! 📲`);
+            }, 2000); // 2000 ms = 2 Sekunden
+
+            // Falls titles ein Array ist, trimme jeden Eintrag
+            const titles = Array.isArray(rawTitles)
+                ? rawTitles.map(title => title.trim()) // trimme alle Strings im Array
+                : rawTitles; // falls kein Array, unverändert lassen
+        
+            helper.sendAll(activeWsClients, { "cmd": "trigger", "triggerName": "newsTime", "titles": titles });
+            setTimeout(() => {
+                tmiClient.say(channel, `🎉 Sollte jetzt jeden Moment zu sehen sein 🚀 Ach ja, die liebe Technik manchmal... Mooment.Kommt.`);
+            }, 3000); // 2000 ms = 2 Sekunden
+        }
+
         if (command === '!poker') {
 
             let pokerSpiel = new Poker(channel);
             aktiveAnmeldungen.set(channel, pokerSpiel);
-            console.log(aktiveAnmeldungen);
-            console.log(channel);
 
             pokerSpiel.pokerPlayers.clear();
 
@@ -610,29 +751,67 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
             console.log('Remanining Time: '+ remainingTimeMs );
         }
         
-        if (command === '!active_cliets'){
+        if (command === '!activeWsClients'){
             console.log(activeWsClients);
         }
-        if (command === '!setgame'){
-            
-        }
-        if (command === '!getBlister'){
-            await sql.connect(authConfig);
-            const result = await sql.query`SELECT TOP 5 id FROM tbl_cards ORDER BY NEWID()`;
-            blisterCards = result.recordset.map(row => row.id);
 
-            console.log('Blister gesetzt');
-            if(activeWsClients !=[] ){
-                helper.sendAll({"cmd":"alert", "triggerName":"basicBlister", "blisterCards":blisterCards});
+        if (command === '!setgame' && tags.username.toLowerCase() === 'rubizockt') {
+            
+            
+            const gameName = args.slice(1).join(" "); // Das Spiel, das gesetzt werden soll
+            let clientId = twitchConfig.identity.username;
+        
+            try {
+                let setGame = await twitch.setGame(gameName);  // Aufruf der asynchronen Funktion
+                
+                // Überprüfe, ob die Rückgabe erfolgreich war
+                if (setGame.msg === 'true') {
+                    tmiClient.say(channel, `Spiel: ${gameName} gesetzt.`);
+                } else {
+                    tmiClient.say(channel, `Spiel: ${gameName} nicht gesetzt. Fehler: ${setGame.error}`);
+                }
+            } catch (error) {
+                console.error('Fehler beim Setzen des Spiels:', error);
+                tmiClient.say(channel, 'Es gab einen Fehler beim Setzen des Spiels.');
             }
+
+        } else if (command === '!setgame') {
+            // Wenn der Benutzer nicht 'rubizockt' ist
+            tmiClient.say(channel, 'Du hast keine Berechtigung, diesen Befehl auszuführen.');
+        }
+
+        if (command === '!newsmp3') {
+            fetch('https://www.deutschlandfunk.de/nachrichten-100.html')
+                .then(response => response.text())  // Hole den HTML-Inhalt der Seite
+                .then(html => {
+                    // Verwende jsdom, um den HTML-Inhalt zu analysieren
+                    const dom = new JSDOM(html);
+                    const doc = dom.window.document;
+                    
+                    // Finde den Button auf der geladenen Seite und hole die URL
+                    const audioButton = doc.querySelector('.b-button-play');
+                    if (audioButton) {
+                        const audioUrl = audioButton.getAttribute('data-audio');
+                        tmiClient.say(channel, `Die aktuelle Radiosendung vom Deutschlandfunk hier hören: ${audioUrl}`);
+                    } else {
+                        tmiClient.say(channel, "Button nicht gefunden auf der Seite!");
+                    }
+                })
+                .catch(error => {
+                    tmiClient.say(channel, 'Fehler beim Abrufen der Seite:', error);
+                });
         }
 
         /** OVERLAY - TRIGGER */
         if (videoCommands[command] || audioCommands[command]) {
+            
             console.log("Trigger erkannt: ", command);
+
             const triggerFile = videoCommands[command] || audioCommands[command];
             if (activeWsClients.length > 0) {
+
                 helper.sendAll(activeWsClients, { "cmd": "trigger", "triggerName": triggerFile });
+
             }
         }
         
@@ -661,20 +840,16 @@ httpsServer.listen(port, () => {
             recentlyPlayedTracks = await spotify.fetchRecentlyPlayedTracks();
 
             if (track === undefined || track === '') {
-                console.log('ERROR: Aktuell keine Songinformationen verfügbar');
                 helper.sendAll(activeWsClients, { "cmd": "notPlaying" });
             } else {
-                console.log('Spotify-Track-Data: ', track);
             }
     
             if (track && track.cmd === 'notPlaying') {
-                console.log(`<app.js 585 Not playing>`);
                 helper.sendAll(activeWsClients, track);
             } else if (track !== '') {
                 const currentTrackJson = '/app/views/spotify/info/current_track.json';
                 try {
                     fs.writeFileSync(currentTrackJson, JSON.stringify({ track: track }, null, 2), 'utf8');
-                    console.log(`Track-Daten wurden in ${currentTrackJson} gespeichert.`);
                     helper.sendAll(activeWsClients, {
                         "cmd": "trackUpdate",
                         "data": JSON.stringify({ track: track })
@@ -690,5 +865,3 @@ httpsServer.listen(port, () => {
     
     
 });    
-
-

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="de">
+    <head>
+        <title>Snake bekommt einen Einblick in HTML</title>
+        <link rel="stylesheet" href="css/snake.css">
+        <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+    </head>
+    <body>
+        <div class="ersterAbsatz"><h2>Produktdatenbank Snake GmbH & Co Kg</h2></div>
+        <form class="produktForm">
+            Vorname:  <input type="text" id="vorname"><br><br>
+            Nachname:  <input type="text" id="nachname"><br><br>
+            <button type="submit" id="btnSend">Senden</button>
+        </form>
+    </body>
+    
+    <script>
+        let submitButton = $('#btnSend');
+        let password = 'supersicheresPasswort';
+        submitButton.on('click',(asozialeAnonymeFunktion));
+
+        function asozialeAnonymeFunktion(event){
+            event.preventDefault();
+            console.log('Knopf gedrueckt');
+            
+            let vorname = document.getElementById('vorname').value;
+            let nachname = document.getElementById('nachname');
+
+            nachname.value = vorname;
+            
+        }
+
+        
+        
+
+    </script>
+
+    
+</html>

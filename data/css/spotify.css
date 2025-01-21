@@ -1,17 +1,15 @@
-@keyframes fall {
+    @keyframes fall {
         0% {
-            transform: translateY(-100px);
+            transform: translateY(-100px) rotate(0deg);
         }
         80% {
-            transform: translateY(calc(100vh - 100px));
-            animation-timing-function: ease-in;
+            transform: translateY(calc(100vh - 100px)) rotate(15deg);
         }
         90% {
-            transform: translateY(calc(100vh - 120px));
-            animation-timing-function: ease-out;
+            transform: translateY(calc(100vh - 120px)) rotate(-15deg);
         }
         100% {
-            transform: translateY(calc(100vh - 100px));
+            transform: translateY(calc(100vh - 100px)) rotate(0deg);
         }
     }
 
@@ -25,17 +23,83 @@
         
     }
 
+    .newsBox {
+        background-color: red;
+        z-index: 1;
+        bottom: 18px;
+        position: absolute;
+        height: 45px;
+        opacity: 0; /* Anfangs unsichtbar */
+    }
+    
+    .newsText{
+        color: white; 
+        font-family: Arial, Helvetica, sans-serif;
+        font-size:2.5em;
+        padding-left: 40px;
+        margin-top: 0;
+        white-space: nowrap;
+        animation-delay: 0s; /* Keine Verzögerung */
+        overflow: hidden; /* Damit kein Text überläuft */
+        width: fit-content;
+        animation: newsScroller 150s linear infinite
+    }
+
+    /* NewsBox Einfliegen */
+    @keyframes newsBoxIn {
+        from {
+            transform: translateX(25%); /* Start rechts außerhalb des Bildschirms */
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0); /* Endposition: sichtbar */
+            opacity: 1;
+        }
+    }
+    
+    .newsBoxIn {
+        animation: newsBoxIn 10s ease-out 2s forwards; /* 2s Verzögerung hinzugefügt */
+    }
+
+    /* NewsBox Ausfliegen */
+    @keyframes newsBoxOut {
+        from {
+            transform: translateX(0); /* Start sichtbar */
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%); /* Endposition: rechts außerhalb des Bildschirms */
+            opacity: 0;
+        }
+    }
+    .newsBoxOut {
+        animation: newsBoxOut 5s ease-in forwards;
+    }
+
+    @keyframes newsScroller{
+        0% {
+            transform: translateX(1920px); /* Startet rechts außerhalb des Containers */
+          }
+          100% {
+            transform: translateX(-100%); /* Bewegt sich bis ganz nach links außerhalb des Containers */
+          }
+    }
+
     @keyframes bounce {
         0% {
             transform: translateY(calc(100vh - 100px));
         }
-        80% {
-            transform: translateY(calc(100vh - 200px));
+        50% {
+            transform: translateY(calc(100vh - 180px));
+        }
+        70% {
+            transform: translateY(calc(100vh - 120px));
         }
         100% {
-            transform: translateY(calc(100vh));                        
+            transform: translateY(calc(100vh - 100px));   
         }
     }
+
     body {
         margin: 0;
         padding: 0;
@@ -46,7 +110,7 @@
     img, video, audio {
         pointer-events: none; /* Verhindert Interaktionen mit den Medien */
         position: fixed;
-        z-index: 5;
+        z-index: 6;
     }
     
 
@@ -72,7 +136,7 @@
         color: white;
         width: 200px;
         margin-top: 3px;
-        z-index: 3;
+        z-index: 4;
     }
     
     .bottomRowText{
@@ -98,7 +162,7 @@
         font-size: 0.7em;
         font-weight: bold;
         width: fit-content;
-        z-index: 2;
+        z-index: 3;
     }
     
     .track-info{
@@ -115,7 +179,7 @@
         grid-column-gap: 0px;
         grid-row-gap: 0px; 
         overflow: hidden;
-        z-index: 1;
+        z-index: 2;
     }
 
 
@@ -127,7 +191,7 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            z-index: 5;
+            z-index: 6;
 
     }
 

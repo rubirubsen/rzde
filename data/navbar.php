@@ -33,7 +33,6 @@
                     .then(response => response.text())
                     .then(data => {
                         trackData = JSON.parse(data).track;
-                        console.log(trackData);
                         // Hier den Text im HTML-Element aktualisieren
                         const currentTrackElement = document.getElementById('livePlayer');
                         const trackInformation = document.getElementById('currentTrack');

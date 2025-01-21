@@ -54,7 +54,7 @@ include('navbar.php');
             <div id="newsModal<?php echo $key; ?>" class="modal">
                 <div class="modalContent">
                     <span class="close" onclick="closeModal('<?php echo $key; ?>')">&times;</span> <!-- Hier platziert -->
-                    <div class="">
+                    <div class="newsArticle" style="background: url('<?php echo $newsDetail['imgUrl']; ?>')">
                         <?php if($newsDetail['mediaType'] === 'video'): ?>
                             <video controls width='530px'>
                                 <source src="<?php echo $newsDetail['imgUrl'] ?>" type='video/webm'>
@@ -65,11 +65,11 @@ include('navbar.php');
                             clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
                             referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
                         <?php else: ?>
-                            <img src="<?php echo $newsDetail['imgUrl'] ?>">
+                            <img src="<?php echo $newsDetail['imgUrl'] ?>" width="60%">
                         <?php endif; ?>         
                     </div>
 
-                    <h2><?php echo $newsDetail['titel'] ?></h2>
+                    <h1 style="font-size: 1.4em"><?php echo $newsDetail['titel'] ?></h1>
                     <div class="newsContent">
                         <?php echo $newsDetail['content'] ?>
                     </div>

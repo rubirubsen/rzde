@@ -156,7 +156,6 @@
 
         mediaElements.forEach(el => observer.observe(el));
 
-        console.log("Seite mit Video- und Audio-Tabellen wurde erfolgreich geladen.");
     </script>
 </body>
 </html>
