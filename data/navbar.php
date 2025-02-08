@@ -17,9 +17,8 @@
     <a href="index.php">Home</a><br>
     <a href="radio.php"class="specialLink">RubiRadio</a><br>
     <a href="zocken.php">Rubi Zockt</a><br>
-    <a href="tcg.php" target="_self">RZ TCG Demokarten</a><br>
+    <a href="labor.php">WiP oder Cooler Stuff</a><br>
     <a href="https://github.com/rubirubsen" target="_blank">GitHub</a><br>
-    <a href="tcgfolder.php" target="_self" class="hideMobile">TCG Album(in progress)</a><br>
     <a href="blog.php" class="hideMobile">Rubi Bloggt</a><br>
     <!-- <a href="server.php">Rubis Server</a><br> --->
     <a href="impressum.php" target="_blank">Impressum</a><br>

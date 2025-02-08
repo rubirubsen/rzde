@@ -9,10 +9,11 @@ import * as spotify from './bot_modules/spotify.js';
 import https from 'https';
 import http from 'http';
 import fs from 'fs';
-import sql from 'mssql';
 import { JSDOM } from 'jsdom';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';  
+import * as sql from './bot_modules/sql.js';
+import { TwitchUser } from './bot_modules/user.js';
 
 dotenv.config()
 
@@ -22,23 +23,10 @@ console.log(`ENV-TEST (NUTZER SA): ${process.env.DB_USER}`);
 const express = (await import('express')).default;
 const app = express();
 const port = 3000;
-
-const authConfig = {
-    user: process.env.DB_USER,
-    password: process.env.DB_SECRET,
-    server: process.env.DB_SERVER,
-    port: process.env.DB_PORT ||33246,
-    database: process.env.DB_NAME,
-    options: {
-        encrypt: true, // For Azure SQL Database
-        trustServerCertificate: true // Change to false for production
-    }
-};
-
-const options = {
-    key: fs.readFileSync('./ssl/privkey.pem'),
-    cert: fs.readFileSync('./ssl/fullchain.pem')
-};
+const videoCommands = JSON.parse(fs.readFileSync('./datasets/videoCommands.json', 'utf-8'));
+const audioCommands = JSON.parse(fs.readFileSync('./datasets/audioCommands.json', 'utf-8'));
+const videoTrigger = JSON.parse(fs.readFileSync('./datasets/videoTrigger.json', 'utf-8'));
+const emoteTrigger = JSON.parse(fs.readFileSync('./datasets/emoteTrigger.json', 'utf-8'));
 
 const twitchConfig = {
     options: {
@@ -53,13 +41,10 @@ const twitchConfig = {
     },
     channels: ['rubizockt']
 };
-
-
-const videoCommands = JSON.parse(fs.readFileSync('./datasets/videoCommands.json', 'utf-8'));
-const audioCommands = JSON.parse(fs.readFileSync('./datasets/audioCommands.json', 'utf-8'));
-const videoTrigger = JSON.parse(fs.readFileSync('./datasets/videoTrigger.json', 'utf-8'));
-const emoteTrigger = JSON.parse(fs.readFileSync('./datasets/emoteTrigger.json', 'utf-8'));
-
+const options = {
+    key: fs.readFileSync('./ssl/privkey.pem'),
+    cert: fs.readFileSync('./ssl/fullchain.pem')
+};
 const tmiClient = new tmi.client(twitchConfig);
 const httpsServer = https.createServer(options, app);
 const wss = new WebSocket.Server({server:httpsServer});
@@ -69,9 +54,12 @@ let pokerEndTime = Date.now();
 let socketClient;
 let activeWsClients = [];
 let blisterCards;
-let bohnencounter = 0;
 let skipVotes = new Set(); // Speichert User, die abgestimmt haben
 let votingActive = false; // Status der Abstimmung
+
+// Einmalige Verbindung herstellen
+const poolPromise = await sql.createPool();
+
 
 
 app.use(express.json());
@@ -185,6 +173,20 @@ const interval = setInterval(() => {
 /** Standard-Routing */
 app.get('/', (req, res) => {
     res.send("rzde API - admin@rubizockt.de");
+});
+
+app.get('/rss-feed', async (req, res) => {
+    try {
+        const titles = await helper.getRssFeed();  // Antwort speichern
+        if (titles) {
+            res.json(titles);  // Titel als Antwort zurückgeben
+        } else {
+            res.status(404).send('Kein Titel gefunden');
+        }
+    } catch (error) {
+        console.error('Fehler beim Abrufen des RSS-Feeds:', error.message); // Detailierte Fehlernachricht
+        res.status(500).send('Fehler beim Abrufen des RSS-Feeds');
+    }
 });
 
 app.get('/health', async(req,res) => {
@@ -414,8 +416,10 @@ app.post('/auth/login', async (req, res) => {
     }
 
     try {
-        await sql.connect(authConfig);
-        const result = await sql.query`SELECT * FROM tblUser WHERE txtUsername = ${username}`;
+        const result = await poolPromise
+        .request()
+        .input('username', sql.VarChar, username) // Verhindert SQL-Injection
+        .query('SELECT * FROM tblUser WHERE txtUsername = @username');
 
         if (result.recordset.length === 0) {
             return res.status(401).send('Benutzername oder Passwort falsch.');
@@ -569,12 +573,13 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
 
         if (command === '!lastplayed'){
             let username = tags.username;
-            tmiClient.say(channel, `${username}, die komplette Playlist der bisher gehörten Songs findest du hier: https://rubizockt.de:3000/spotify/info/lastPlayed`);
+            tmiClient.say(channel, `${username}, die letzten 50 Tracks der bisher gehörten Songs findest du hier: https://rubizockt.de/spotify/playlist/last-played`);
         }
 
         if (command === '!sr') {
 
             try{
+                
                 let trackId;
                 let query = args.slice(1).join(' ');
                 console.log("QUERY: ", query);
@@ -591,18 +596,23 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
                     trackId = await spotify.searchForTrack(query)
 
                 }
-            
+                const user = new TwitchUser(tags.username);
                 
-                if (tags.username === 'bohnenkrautsaft'){
-                    bohnencounter++;
-                    trackId = await spotify.addToQueue(trackId);
-                    let track = await spotify.getTrackById(trackId);
-                    tmiClient.say(channel, `Ich habe ${track.name}  eingefügt in die Warteschlange. Bohnenkrautsaft hat schon ${bohnencounter} Songs eingefügt`);	
-                }else{
-                    trackId = await spotify.addToQueue(trackId);
-                    let track = await spotify.getTrackById(trackId);
-                    tmiClient.say(channel, `Ich habe ${track.name} eingefügt in die Warteschlange.`);
+                await user.initializeFromDB();
+
+                if (user.displayName === user.username) {
+                    console.log(`Benutzer ${user.username} nicht gefunden, erstelle ihn in der DB...`);
+                    await user.createInDB();  // Erstelle den Benutzer in der DB
                 }
+                
+                user.songRequestCount += 1;
+                await user.updateSongRequestCountInDB();
+                const songRequestCount = user.songRequestCount;  // Hol dir die Songrequest-Anzahl
+
+                trackId = await spotify.addToQueue(trackId);
+                let track = await spotify.getTrackById(trackId);
+                tmiClient.say(channel, `Ich habe ${track.name}  eingefügt in die Warteschlange. ${user.displayName} hat schon ${songRequestCount} Songs eingefügt`);	
+                
             } catch (error) {
                 console.error("Fehler beim Abrufen der Songinformationen:",error);
             }
@@ -647,22 +657,11 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
 
         if (command === '!news') {
 
-            tmiClient.say(channel, `🧐 Moment mal, ich checke, was es Neues gibt! 📰`);
-            
-            const rawTitles = await helper.getRssFeed();
-            setTimeout(() => {
-                tmiClient.say(channel, `Da hab ich es schon! 🚀 Ich werfe das schnell auf's Overlay! 📲`);
-            }, 2000); // 2000 ms = 2 Sekunden
-
-            // Falls titles ein Array ist, trimme jeden Eintrag
-            const titles = Array.isArray(rawTitles)
-                ? rawTitles.map(title => title.trim()) // trimme alle Strings im Array
-                : rawTitles; // falls kein Array, unverändert lassen
-        
-            helper.sendAll(activeWsClients, { "cmd": "trigger", "triggerName": "newsTime", "titles": titles });
+            tmiClient.say(channel, `🧐 Moment mal, ich checke, was es Neues gibt! 📰`);      
+            helper.sendAll(activeWsClients, { "cmd": "trigger", "triggerName": "newsTime"});
             setTimeout(() => {
                 tmiClient.say(channel, `🎉 Sollte jetzt jeden Moment zu sehen sein 🚀 Ach ja, die liebe Technik manchmal... Mooment.Kommt.`);
-            }, 3000); // 2000 ms = 2 Sekunden
+            }, 3000);
         }
 
         if (command === '!poker') {

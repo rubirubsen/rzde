@@ -1,6 +1,7 @@
 <?php
 include('navbar.php'); 
 ?>
+<a href="javascript:history.back()"><== Go Back</a>
 <div id="userInput" style="margin-left:12vw">
     <input type="text" id="username" placeholder="Benutzernamen eingeben" />
     <button onclick="loadUserCards()">Karten anzeigen</button>

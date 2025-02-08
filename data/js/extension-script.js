@@ -1,28 +1,30 @@
 const uid = 'D4sP4ssw0rt.'
-
+const newsBoxElement = document.getElementById("newsScroll");
+const newsTextElement = document.getElementById("newsText");
 
 let current_song;
+let titles = [];
+let parsedMessage;
+let message;
+let oldTitle;
+let trackInfo; 
+let textWidth;
+let media = null;
+let socket = null; 
 
-window.onload = function() {
- 
-    
-    
-};
+const topRowDiv = document.getElementById('topRow');
+const scrollerRowDiv = document.getElementById('bottomRow');
+const trackInfoDiv = document.getElementById('track-info');
+const trackCover = document.getElementById('trackCover');
+const currentSongUrl = 'https://rubizockt.de/spotify/info/current_track.json';
 
 if (socket && socket.readyState !== WebSocket.CLOSED) {
     socket.close();
 }
 
-if (!socket || socket.readyState === WebSocket.CLOSED) {
-    var socket = new WebSocket(`wss://rubizockt.de:3000?uid=${uid}&client_type=overlay`);
+if (!socket || socket === null) {
+    socket = new WebSocket(`wss://rubizockt.de:3000?uid=${uid}&client_type=overlay`);
 }
-
-let parsedMessage;
-let message;
-let oldTitle;
-let trackInfo; 
-const currentSongUrl = 'https://rubizockt.de/spotify/info/current_track.json';
-
 
 
 fetch(currentSongUrl)
@@ -41,22 +43,184 @@ fetch(currentSongUrl)
     }
 });
 
-const topRowDiv = document.getElementById('topRow');
-const scrollerRowDiv = document.getElementById('bottomRow');
-const trackInfoDiv = document.getElementById('track-info');
-const trackCover = document.getElementById('trackCover');
-
-let media = null;
-
 // JSON laden und global speichern
-fetch('https://rubizockt.de/datasets/media.json')
-    .then(response => response.json())
-    .then(data => {
-        media = data;
-        console.log("Media-Daten geladen:", media);
-    })
-    .catch(error => console.error("Fehler beim Laden der JSON-Datei:", error));
+fetch('https://rubizockt.de/datasets/media.json').then(response => response.json()).then(data => {
+    media = data;
+    console.log("Media-Daten geladen:", media);
+}).catch(error => console.error("Fehler beim Laden der JSON-Datei:", error));
 
+async function getRssFeed() {
+    const rssUrl = 'https://rubizockt.de:3000/rss-feed'; // Dein PHP-Endpunkt
+
+    try {
+        // RSS-Feed abrufen
+        const response = await fetch(rssUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP-Error: ${response.status}`);
+        }
+
+        const jsonData = await response.json(); // JSON-Antwort
+
+        // jsonData ist bereits ein Array mit Titeln
+        return jsonData;
+
+    } catch (error) {
+        console.error("RSS Feed Error:", error);
+        return null;
+    }
+}
+
+async function getNews(){
+
+    console.log('News werden abgerufen...');
+    titles = await getRssFeed();
+    setTimeout(getNews, 60000);
+    newsTextElement.innerHTML = titles.map(title => {
+        return `${title} <img src="http://rubizockt.de/img/rz_icon.png" style="width: 30px; height: 30px; vertical-align: revert;">`;
+    }).join('');
+    
+}
+
+// Emoji erstellen
+function createEmoji(src) {
+    const emoji = document.createElement('img');
+    emoji.src = src;
+    emoji.style.position = 'fixed';
+    emoji.style.left = Math.random() * (window.innerWidth - 100) + 'px';
+    emoji.style.top = Math.random() * (window.innerHeight / 3) + 'px';
+    emoji.style.width = '100px';
+    emoji.style.height = '100px';
+    emoji.style.zIndex = 1000;
+    emoji.classList.add('falling-emoji');
+    document.body.appendChild(emoji);
+
+    setTimeout(() => emoji.remove(), 10000);
+}
+
+// Audio abspielen
+function playAudio(src) {
+    const audio = document.createElement('audio');
+    audio.src = src;
+    audio.autoplay = true;
+    audio.style.position = 'fixed';
+    audio.style.zIndex = 1000;
+    document.body.appendChild(audio);
+    audio.onended = function() {
+        audio.remove();
+    };
+}
+
+// Video abspielen
+function playVideo(src) {
+    const video = document.createElement('video');
+    video.src = src;
+    video.autoplay = true;
+    video.style.position = 'fixed';
+    video.style.width = '100%';
+    video.style.height = '100%';
+    video.style.zIndex = 1000;
+    document.body.appendChild(video);
+    video.onended = function() {
+        video.remove();
+    };
+}
+
+// Funktion zur Aktualisierung der Track-Informationen
+function updateTrackInfoDiv(trackInfo) {
+    const trackCover = document.getElementById('trackCover');
+    const topRowDiv = document.getElementById('topRow');
+    const scrollerRowDiv = document.getElementById('bottomRow');
+    const trackInfoDiv = document.getElementById('track-info');
+
+    // Debugging: Überprüfen, ob alle DOM-Elemente vorhanden sind
+    if (!trackCover || !topRowDiv || !scrollerRowDiv || !trackInfoDiv) {
+        console.error("Fehlende DOM-Elemente:", {
+            trackCover,
+            topRowDiv,
+            scrollerRowDiv,
+            trackInfoDiv
+        });
+        return;
+    }
+
+
+    const backgroundImageUrl = `spotify/info/current_image.jpg?${encodeURIComponent(trackInfo.artistNames)}`;
+    
+    // Debugging: Überprüfen der URL für das Hintergrundbild
+    
+    trackCover.style.backgroundImage = `url(${backgroundImageUrl})`;
+
+    // Textaktualisierung
+    topRowDiv.innerHTML = `<p id="topRowText">${trackInfo.trackName}</p>`;
+    scrollerRowDiv.innerHTML = `<p id="bottomRowText">${trackInfo.artistNames}</p>`;
+
+    // Funktion zur Anwendung der Scroll-Animation
+    function applyScrolling(element) {
+        const textElement = element.querySelector('p');
+        const headerElementWidth = element.offsetWidth;
+        textWidth = getTextWidth(textElement.textContent, "Arial, sans-serif");
+
+        // Debugging: Breite des Elements und des Textes
+
+        if (textWidth > headerElementWidth) {
+            console.log("Text ist breiter als der Container, Animation anwenden.");
+            textElement.classList.add('scrolling');
+        } else {
+            textElement.classList.remove('scrolling');
+        }
+    }
+
+    // Überprüfe beide Zeilen
+    applyScrolling(topRowDiv);
+    applyScrolling(scrollerRowDiv);
+
+    trackInfoDiv.style.visibility = 'visible';
+}
+
+// Hilfsfunktion zur Berechnung der Textbreite
+function getTextWidth(text, font) {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    context.font = font;
+    const width = context.measureText(text).width;
+    console.log("Berechnete Textbreite:", width);
+    return width;
+}
+
+function showNews() {
+    
+    newsBoxElement.classList.remove("newsBoxOut"); // Sicherstellen, dass "Ausfliegen" entfernt wird
+    newsBoxElement.classList.add("newsBoxIn");
+    // Nach 5 Minuten die newsBox ausblenden
+    setTimeout(() => {
+        newsBoxElement.classList.remove("newsBoxIn");
+        newsBoxElement.classList.add("newsBoxOut");
+    }, 150000); // 5 Minuten in Millisekunden
+}
+
+// Beispiel-Trigger-Funktion für Medienaktionen
+function handleMediaAction(triggerName) {
+    console.log("Trigger empfangen:", triggerName);
+    if (triggerName === 'emoji') {
+        createEmoji('emoji_src');
+    } else if (triggerName === 'audio') {
+        playAudio('audio_src');
+    } else if (triggerName === 'video') {
+        playVideo('video_src');
+    }
+}
+
+function getURLParameter(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+
+window.onload = function() {
+
+    getNews();
+
+};
 
 // Debugging: Sicherstellen, dass WebSocket erfolgreich verbunden ist
 socket.onopen = function(event) {
@@ -140,7 +304,7 @@ socket.onmessage = function(event) {
                     console.log('Received Trigger', message.triggerName);
                     
                     if (message.triggerName === 'newsTime'){
-                        showNews(message);
+                        showNews();
                         break;
                     }
 
@@ -194,157 +358,3 @@ socket.onerror = function(error) {
     console.error("WebSocket-Fehler:", error);
 };
 
-// Emoji erstellen
-function createEmoji(src) {
-    const emoji = document.createElement('img');
-    emoji.src = src;
-    emoji.style.position = 'fixed';
-    emoji.style.left = Math.random() * (window.innerWidth - 100) + 'px';
-    emoji.style.top = Math.random() * (window.innerHeight / 3) + 'px';
-    emoji.style.width = '100px';
-    emoji.style.height = '100px';
-    emoji.style.zIndex = 1000;
-    emoji.classList.add('falling-emoji');
-    document.body.appendChild(emoji);
-
-    setTimeout(() => emoji.remove(), 10000);
-}
-
-// Audio abspielen
-function playAudio(src) {
-    const audio = document.createElement('audio');
-    audio.src = src;
-    audio.autoplay = true;
-    audio.style.position = 'fixed';
-    audio.style.zIndex = 1000;
-    document.body.appendChild(audio);
-    audio.onended = function() {
-        audio.remove();
-    };
-}
-
-// Video abspielen
-function playVideo(src) {
-    const video = document.createElement('video');
-    video.src = src;
-    video.autoplay = true;
-    video.style.position = 'fixed';
-    video.style.width = '100%';
-    video.style.height = '100%';
-    video.style.zIndex = 1000;
-    document.body.appendChild(video);
-    video.onended = function() {
-        video.remove();
-    };
-}
-
-// Funktion zur Aktualisierung der Track-Informationen
-function updateTrackInfoDiv(trackInfo) {
-    const trackCover = document.getElementById('trackCover');
-    const topRowDiv = document.getElementById('topRow');
-    const scrollerRowDiv = document.getElementById('bottomRow');
-    const trackInfoDiv = document.getElementById('track-info');
-
-    // Debugging: Überprüfen, ob alle DOM-Elemente vorhanden sind
-    if (!trackCover || !topRowDiv || !scrollerRowDiv || !trackInfoDiv) {
-        console.error("Fehlende DOM-Elemente:", {
-            trackCover,
-            topRowDiv,
-            scrollerRowDiv,
-            trackInfoDiv
-        });
-        return;
-    }
-
-
-    const backgroundImageUrl = `spotify/info/current_image.jpg?${encodeURIComponent(trackInfo.artistNames)}`;
-    
-    // Debugging: Überprüfen der URL für das Hintergrundbild
-    
-    trackCover.style.backgroundImage = `url(${backgroundImageUrl})`;
-
-    // Textaktualisierung
-    topRowDiv.innerHTML = `<p id="topRowText">${trackInfo.trackName}</p>`;
-    scrollerRowDiv.innerHTML = `<p id="bottomRowText">${trackInfo.artistNames}</p>`;
-
-    // Funktion zur Anwendung der Scroll-Animation
-    function applyScrolling(element) {
-        const textElement = element.querySelector('p');
-        const headerElementWidth = element.offsetWidth;
-        let textWidth = getTextWidth(textElement.textContent, "Arial, sans-serif");
-
-        // Debugging: Breite des Elements und des Textes
-
-        if (textWidth > headerElementWidth) {
-            console.log("Text ist breiter als der Container, Animation anwenden.");
-            textElement.classList.add('scrolling');
-        } else {
-            textElement.classList.remove('scrolling');
-        }
-    }
-
-    // Überprüfe beide Zeilen
-    applyScrolling(topRowDiv);
-    applyScrolling(scrollerRowDiv);
-
-    trackInfoDiv.style.visibility = 'visible';
-}
-
-// Hilfsfunktion zur Berechnung der Textbreite
-function getTextWidth(text, font) {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    context.font = font;
-    const width = context.measureText(text).width;
-    console.log("Berechnete Textbreite:", width);
-    return width;
-}
-
-function showNews(message) {
-    
-    const titles = message.titles; // Hole die Nachrichten-Titel
-    let textWidth;
-    const newsBoxElement = document.getElementById("newsScroll");
-    const newsTextElement = document.getElementById("newsText");
-
-    // Sicherstellen, dass titles ein Array ist
-    if (Array.isArray(titles) && titles.length > 0) {
-        const newsText = document.querySelector('.newsText');
-        // Texte setzen und zwischen die Nachrichten Punkte einfügen
-        newsTextElement.innerHTML = titles.map(title => title.trim()).join(' \u2022 ') + ' \u2022';
-        textWidth = newsText.offsetWidth;
-        newsText.style.animationDuration = `${textWidth / 100}s`;  // Geschwindigkeit anpassen
-        newsText.style.animationTimingFunction = "linear";  // Beibehalten der Bewegungsgeschwindigkeit
-        
-    } else {
-        console.error("titles ist kein gültiges Array oder leer:", titles);
-        newsTextElement.innerHTML = "Keine aktuellen Nachrichten verfügbar.";
-    }
-
-    // Animation für das Einfliegen
-    newsBoxElement.classList.remove("newsBoxOut"); // Sicherstellen, dass "Ausfliegen" entfernt wird
-    newsBoxElement.classList.add("newsBoxIn");
-
-    // Nach 5 Minuten die newsBox ausblenden
-    setTimeout(() => {
-        newsBoxElement.classList.remove("newsBoxIn");
-        newsBoxElement.classList.add("newsBoxOut");
-    }, 150000); // 5 Minuten in Millisekunden
-}
-
-// Beispiel-Trigger-Funktion für Medienaktionen
-function handleMediaAction(triggerName) {
-    console.log("Trigger empfangen:", triggerName);
-    if (triggerName === 'emoji') {
-        createEmoji('emoji_src');
-    } else if (triggerName === 'audio') {
-        playAudio('audio_src');
-    } else if (triggerName === 'video') {
-        playVideo('video_src');
-    }
-}
-
-function getURLParameter(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}

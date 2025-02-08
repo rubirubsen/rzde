@@ -9,7 +9,7 @@
 </head>
 <body>
 <main id=app>
-<a href='https://rubizockt.de' style="color:white" target="_self"><= HOME </a>
+<a href="javascript:history.back()"><== Go Back</a>
 <h1>RubiZockt Sammelkarten, Holo Effect</h1>
   <section class="cards">
     <div class="card common animated"></div>

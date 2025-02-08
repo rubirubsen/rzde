@@ -45,6 +45,7 @@ data/sql/
 node/
 node_modules/
 data/spotify/info/
+data/portainer.db
 .env
 
 # SSH- und Zertifikatsdateien

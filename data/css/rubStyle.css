@@ -176,10 +176,18 @@ ul {
 li {
     display: inline;
     list-style: none;
-    padding-right: 40px;
     color: #7B7B7B;
+    background-color: #ff8000;
+    border-radius: 15px;
+    font-weight: bold;
+    text-align:center;
 }
 
+li a{
+    color: #ffffff;
+    text-align:center;
+
+}
 tr:nth-child(even) {
     background: #CCC
 }

@@ -5,7 +5,7 @@
   "description": "js-service for rzde",
   "main": "app.js",
   "scripts": {
-    "start": "nodemon --ignore 'views/spotify/info/*' app.js",
+    "start": "node app.js",
     "test": "npm start"
   },
   "author": "rubizockt",
