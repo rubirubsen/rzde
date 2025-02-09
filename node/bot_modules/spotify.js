@@ -6,6 +6,11 @@ import fs from 'fs';
 import path from 'path';
 
 dotenv.config();
+const redBgYellowText = '\x1b[41m\x1b[93m';
+const YellowBgRedText = '\x1b[103m\x1b[31m';
+const blackBgGreenText = '\x1b[40m\x1b[32m';
+const purpleBgWhiteText = '\x1b[38;5;91m';
+const reset = '\x1b[0m'; // Zurücksetzen der Formatierung
 
 
 const sp_client_id = process.env.CLIENTID;
@@ -13,6 +18,8 @@ const sp_client_secret = process.env.CLIENTSECRET;
 const sp_redirect_uri = 'https://rubizockt.de:3000/spotify/callback';
 
 let songProof = '';
+let songProofCounter = 0;
+let noPlayCounter = 0;
 let refresh_token = '';
 let access_token = '';
 let start_time = null;
@@ -55,7 +62,7 @@ const downloadImage = async (url, imagePath) => {
 
         response.data.pipe(fs.createWriteStream(imagePath));
     } catch (error) {
-        console.error('Fehler beim Herunterladen oder Speichern des Bildes:', error);
+        console.error(`${YellowBgRedText}Fehler beim Herunterladen oder Speichern des Bildes:`, error,`${reset}`);
     }
 };
 
@@ -71,7 +78,7 @@ async function getAccessToken(req, res) {
         });
         res.redirect(`https://accounts.spotify.com/authorize?${queryParams}`);
     } catch (error) {
-        console.log('Error authorize tokens:', error);
+        console.error(`${YellowBgRedText}Error authorize tokens:`, error,`${reset}`);
         return null;
     }
 }
@@ -91,12 +98,12 @@ async function callbackProcess(req, res) {
         refresh_token = tokenResponse.data.refresh_token;
         let tokenData = tokenResponse.data;
 
-        console.log("Auth erfolgreich!");
+        console.log(`${blackBgGreenText}Spotify Auth Success!${reset}`);
         res.send("Auth erfolgreich!");
         scheduleTokenRefresh(tokenData);
-        console.log('Refresh-Timer gesetzt!');
+        console.log(`${blackBgGreenText}Refresh-Timer gesetzt!${reset}`);
     } catch (error) {
-        console.error('Fehler bei der Authentifizierung:', error);
+        console.error(`${YellowBgRedText}Fehler bei der Authentifizierung:`, error,`${reset}`);
         res.status(500).send('Fehler bei der Authentifizierung');
     }
 }
@@ -115,7 +122,7 @@ async function fetchRecentlyPlayedTracks() {
         const items = response.data.items;
 
         if (items.length === 0) {
-            console.log("Keine kürzlich gespielten Tracks gefunden.");
+            console.log(`${blackBgGreenText}Keine kürzlich gespielten Tracks gefunden.`);
             recentlyPlayedTracks.tracks = [];
             return;
         }
@@ -143,7 +150,7 @@ async function fetchRecentlyPlayedTracks() {
         recentlyPlayedTracks.lastUpdated = new Date().toISOString(); // Zeitstempel aktualisieren
 
     } catch (error) {
-        console.error("Fehler beim Abrufen der zuletzt gespielten Tracks:", error.message);
+        console.error(`${YellowBgRedText}Fehler beim Abrufen der zuletzt gespielten Tracks:`, error.message,`${reset}`);
     }
 }
 
@@ -162,23 +169,23 @@ function scheduleTokenRefresh(tokenData) {
     // Vorherigen Timer löschen, falls vorhanden
     if (refreshTokenTimer) {
         clearTimeout(refreshTokenTimer);
-        console.log('Vorheriger Refresh-Token-Timer gelöscht.');
+        console.error(`${YellowBgRedText}Vorheriger Refresh-Token-Timer gelöscht.${reset}`);
     }
 
     refreshTokenTimer = setTimeout(async () => {
         try {
             await refreshAccessToken();
         } catch (err) {
-            console.error('Fehler beim automatischen Erneuern des Tokens:', err.message);
+            console.error(`${YellowBgRedText}Fehler beim automatischen Erneuern des Tokens: '${err.message} ${reset}`);
             // Optional: Wiederholen nach einer Verzögerung, z. B. 30 Sekunden
             setTimeout(() => {
-                console.log('Neuer Versuch, das Token zu erneuern...');
-                refreshAccessToken().catch(error => console.error('Fehler beim Wiederholungsversuch:', error.message));
+                console.log(`${blackBgGreenText}Neuer Versuch, das Token zu erneuern...${reset}`);
+                refreshAccessToken().catch(error => console.error(`${YellowBgRedText}Fehler beim Wiederholungsversuch: `, error.message));
             }, 30000); // 30 Sekunden warten
         }
     }, refreshInMs);
 
-    console.log('Neuer Timer für Token-Refresh gesetzt:', refreshInMs);
+    console.log(`${blackBgGreenText}Neuer Timer für Token-Refresh gesetzt: `, refreshInMs,`${reset}`);
 }
 
 async function refreshAccessToken() {
@@ -186,7 +193,7 @@ async function refreshAccessToken() {
 
     // Wenn kein refresh_token vorhanden ist, Fehler behandeln
     if (!rt) {
-        console.error('Kein gültiger Refresh-Token vorhanden. Authentifizierung ist erforderlich.');
+        console.error(`${YellowBgRedText}Kein gültiger Refresh-Token vorhanden. Authentifizierung ist erforderlich. ${reset}`);
         return;
     }
 
@@ -201,23 +208,23 @@ async function refreshAccessToken() {
     };
 
     try {
-        console.log('Versuche, das Access Token zu erneuern...');
+        console.log(`${blackBgGreenText} Versuche, das Access Token zu erneuern...${reset}`);
         const response = await axios(authOptions);
         access_token = response.data.access_token;
-        console.log('Neues Access Token erhalten:', access_token);
+        console.log(`${blackBgGreenText}Neues Access Token erhalten:`, access_token);
 
         // Falls ein neuer Refresh-Token zurückgegeben wird, speichern
         if (response.data.refresh_token) {
             refresh_token = response.data.refresh_token;
-            console.log('Neuer Refresh Token erhalten:', refresh_token);
+           console.log(`${blackBgGreenText}Neuer Refresh Token erhalten:`, refresh_token);
         } else {
-            console.log('Kein neuer Refresh Token zurückgegeben.');
+            console.error(`${YellowBgRedText}Kein neuer Refresh Token zurückgegeben.${reset}`);
         }
 
         // Neuen Timer setzen
         scheduleTokenRefresh(response.data);
     } catch (error) {
-        console.log('Error refreshing access token:', error);
+        console.error(`${YellowBgRedText}Error refreshing access token: `, error, `${reset}`);
         return null;
     }
 }
@@ -226,12 +233,12 @@ async function refreshAccessToken() {
 async function ensureAccessToken() {
     const currentTime = Date.now();
     if (currentTime > start_time + refreshInMs) {
-        console.log("Access Token abgelaufen oder bald abgelaufen, erneuere es...");
+        console.error(`${YellowBgRedText}Access Token abgelaufen oder bald abgelaufen, erneuere es...${reset}`);
         try {
             await refreshAccessToken();
-            console.log('Token erneuert.');
+            console.log(`${blackBgGreenText}Token erneuert.${reset}`);
         } catch (err) {
-            console.error('Fehler beim Erneuern des Tokens:', err.message);
+            console.error(`${YellowBgRedText}Fehler beim Erneuern des Tokens:`, err.message, `${reset}`);
         }
     }
 }
@@ -255,14 +262,14 @@ async function searchForTrack(query) {
         console.log(`Es wurden ${tracks.length} Tracks gefunden:`);
 
         if (tracks.length === 0) {
-            console.log('Kein Track gefunden');
+            console.log(`${blackBgGreenText}Kein Track gefunden${reset}`);
             return null;
         }
         console.log(tracks[0].name);
         // Returning the first track found
         return tracks[0].id;
     } catch (error) {
-        console.error('Fehler bei der Spotify-Suche:', error);
+        console.error(`${YellowBgRedText}Fehler bei der Spotify-Suche:`, error, `${reset}`);
         throw error;
     }
 }
@@ -286,13 +293,13 @@ async function addToQueue(trackId) {
         return trackId;
         
     } catch (error) {
-        console.error('Fehler beim Hinzufügen des Tracks zur Queue:', error);
+        console.error(`${YellowBgRedText}Fehler beim Hinzufügen des Tracks zur Queue:`, error, `${reset}`);
         throw error;
     }
 }
 
 async function skipTrack() {
-    console.log('Überspringe den aktuellen Track...');
+    console.log(`${blackBgGreenText}Überspringe den aktuellen Track...${reset}`);
     try {
         await axios({
             method: 'post',
@@ -302,16 +309,16 @@ async function skipTrack() {
             }
         });
 
-        console.log('Track wurde übersprungen');
+        console.log(`${blackBgGreenText}Track wurde übersprungen${reset}`);
         
     } catch (error) {
-        console.error('Fehler beim Überspringen des Tracks:', error);
+        console.error(`${YellowBgRedText}Fehler beim Überspringen des Tracks:`, error, `${reset}`);
         throw error;
     }
 }
 
 async function stopTrack() {
-    console.log('Stoppe die Wiedergabe des aktuellen Tracks...');
+    console.log(`${blackBgGreenText}Stoppe die Wiedergabe des aktuellen Tracks...${reset}`);
     
     try {
         await axios({
@@ -322,16 +329,16 @@ async function stopTrack() {
             }
         });
 
-        console.log('Track wurde gestoppt');
+        console.log(`${blackBgGreenText}Track wurde gestoppt${reset}`);
         
     } catch (error) {
-        console.error('Fehler beim Stoppen des Tracks:', error);
+        console.error(`${YellowBgRedText}Fehler beim Stoppen des Tracks:`, error, `${reset}`);
         throw error;
     }
 }
 
 async function startPlaying() {
-    console.log('Fortsetzen der Wiedergabe...');
+    console.log(`${blackBgGreenText}Fortsetzen der Wiedergabe...${reset}`);
     
     try {
         await axios({
@@ -342,10 +349,10 @@ async function startPlaying() {
             }
         });
 
-        console.log('Wiedergabe wurde fortgesetzt');
+        console.log(`${blackBgGreenText}Wiedergabe wurde fortgesetzt${reset}`);
         
     } catch (error) {
-        console.error('Fehler beim Fortsetzen der Wiedergabe:', error);
+        console.error(`${YellowBgRedText}Fehler beim Fortsetzen der Wiedergabe:`, error, `${reset}`);
         throw error;
     }
 }
@@ -369,7 +376,7 @@ async function setVolume(value) {
         console.log(`Lautstärke wurde auf ${value} gesetzt`);
         
     } catch (error) {
-        console.error('Fehler beim Setzen der Lautstärke:', error);
+        console.error(`${YellowBgRedText}Fehler beim Setzen der Lautstärke:`, error, `${reset}`);
         throw error;
     }
 }
@@ -421,10 +428,18 @@ async function getCurrentTrack() {
             // Falls nichts gespielt wird
             let cmd = 'notPlaying';
             trackInfo = 'Es wird derzeit nichts abgespielt.';
-            console.log('NO PLAYING NOTHING!');
+            if(noPlayCounter < 1){
+                console.log(`${blackBgGreenText}NO PLAYING NOTHING!${reset}`);
+                noPlayCounter++;
+            }
+
             return { cmd, trackInfo };
+
         }else{
+
             trackInfo = (({ id, name, title }) => ({ id, name, title }))(currentlyPlaying);
+            noPlayCounter = 0;
+
         }
         
         
@@ -433,11 +448,10 @@ async function getCurrentTrack() {
         const artists = currentlyPlaying.artists;
         const trackImage = `/app/views/spotify/info/current_image.jpg`;
         const artistNames = artists.map(artist => artist.name).join(', ');
-    
+        
         // Überprüfung von songProof
         if (songProof !== '') {
             if (songProof !== trackName) {
-                console.log('Song is not the same as proof!');
                 songProof = trackName;
     
                 const albumCover = currentlyPlaying.album.images[0].url;
@@ -447,17 +461,21 @@ async function getCurrentTrack() {
                 fs.writeFileSync(currentTrackFile, trackName, 'utf8');
                 fs.writeFileSync(currentArtistFile, artistNames, 'utf8');
                 await downloadImage(albumCover, trackImage);
+                songProofCounter = 0;
     
             } else {
-                console.log('Song is the same as proof!');
+                if (songProofCounter < 1){
+                    console.log(`${blackBgGreenText}Song is the same as proof!${reset}`);
+                    songProofCounter=1
+                }
             }
         } else {
-            console.log('No SongProof yet!');
+            console.log(`${blackBgGreenText}No SongProof yet!${reset}`);
             songProof = trackName;
             const albumCover = currentlyPlaying.album.images[0].url;
             const fullInfo = `${trackName} - ${artistNames}`;
             const fullTrackFile = '/app/views/spotify/info/full_info.txt';
-            
+            songProofCounter = 0;
             // Dateien schreiben
             fs.writeFileSync('/app/views/spotify/info/current_track.txt', trackName, 'utf8');
             fs.writeFileSync('/app/views/spotify/info/current_artist.txt', artistNames, 'utf8');
@@ -475,14 +493,14 @@ async function getCurrentTrack() {
             
             try {
                 await refreshAccessToken();
-                console.log('Token erneuert.');
+                console.log(`${blackBgGreenText}Token erneuert.${reset}`);
             } catch (err) {
-                console.error('Fehler beim Erneuern des Tokens:', err.message);
+                console.error(`${YellowBgRedText}Fehler beim Erneuern des Tokens:`, err.message, `${reset}`);
             }
 
             return await getCurrentTrack();
         }
-        console.log("ERROR: ", error);
+        console.log(`${YellowBgRedText}ERROR: ${error.response.status} - ${error.response.statusText}${reset}`);
         fs.writeFileSync('/app/views/spotify/info/current_track.txt', "Not playing Music", 'utf8');
         fs.writeFileSync('/app/views/spotify/info/current_artist.txt', "!sr for Songrequest", 'utf8');
         return 'Es gab ein Problem beim Abrufen der letzten Wiedergabe.';
@@ -502,7 +520,7 @@ async function getTrackById(trackId) {
 
         return trackData.data; // Nur die Track-Daten zurückgeben
     } catch (error) {
-        console.error('Fehler beim Abrufen des Tracks:', error);
+        console.error(`${YellowBgRedText}Fehler beim Abrufen des Tracks:`, error, `${reset}`);
         throw error; // Fehler weiterwerfen, um ihn im Aufrufer zu behandeln
     }
 }

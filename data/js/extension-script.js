@@ -1,4 +1,3 @@
-const uid = 'D4sP4ssw0rt.'
 const newsBoxElement = document.getElementById("newsScroll");
 const newsTextElement = document.getElementById("newsText");
 
@@ -11,6 +10,7 @@ let trackInfo;
 let textWidth;
 let media = null;
 let socket = null; 
+let videoTrigger = null;
 
 const topRowDiv = document.getElementById('topRow');
 const scrollerRowDiv = document.getElementById('bottomRow');
@@ -23,7 +23,7 @@ if (socket && socket.readyState !== WebSocket.CLOSED) {
 }
 
 if (!socket || socket === null) {
-    socket = new WebSocket(`wss://rubizockt.de:3000?uid=${uid}&client_type=overlay`);
+    socket = new WebSocket(`wss://rubizockt.de:3000?client_type=overlay`);
 }
 
 
@@ -298,53 +298,70 @@ socket.onmessage = function(event) {
             break;
 
         case 'trigger':
-            
-                if (message.triggerName) {
+            if (message.triggerName) {
+                console.log('Received Trigger', message.triggerName);
+        
+                if (message.triggerName === 'newsTime') {
+                    showNews();
+                    break;
+                }
+        
+                if (!media || typeof media !== 'object') {
+                    console.error("Media-Daten sind nicht korrekt geladen oder kein Objekt.");
+                    break;
+                }
+        
+                let commandFound = false;
+                for (let command in media) {
 
-                    console.log('Received Trigger', message.triggerName);
-                    
-                    if (message.triggerName === 'newsTime'){
-                        showNews();
-                        break;
-                    }
+                    if (message.triggerName === command) {
 
-                    if (!media) {
-                        console.log("Media-Daten sind noch nicht geladen.");
-                        break;
-                    }
-                    
-                    // Trigger-Logik
-                    for (let command in media) {
-                        
-
-                        if (message.triggerName.includes(command)) {
-                            
-                            console.log(`KOMMANDO ${command} erkannt ... `);
-                            
-                            switch (media[command].type) {
-
+                        console.log(`KOMMANDO ${command} erkannt ... `);
+                        if (Array.isArray(media[command])) {
+                            media[command].forEach(action => {
+                                switch (action.type) {
+                                    case 'emoji':
+                                        console.log("EMOJI");
+                                        createEmoji(action.src);
+                                        break;
+                                    case 'audio':
+                                        console.log("AUDIO");
+                                        playAudio(action.src);
+                                        break;
+                                    case 'video':
+                                        console.log("VIDEO");
+                                        playVideo(action.src);
+                                        break;
+                                }
+                            });
+                        } else {
+                            // Wenn es kein Array ist, verarbeite es wie bisher
+                            const mediaCommand = media[command];
+                            switch (mediaCommand.type) {
                                 case 'emoji':
                                     console.log("EMOJI");
-                                    createEmoji(media[command].src);
+                                    createEmoji(mediaCommand.src);
                                     break;
-
                                 case 'audio':
                                     console.log("AUDIO");
-                                    playAudio(media[command].src);
+                                    playAudio(mediaCommand.src);
                                     break;
-
                                 case 'video':
                                     console.log("VIDEO");
-                                    playVideo(media[command].src);
+                                    playVideo(mediaCommand.src);
                                     break;
-
                             }
-
-                            break;  // Falls nur ein Command behandelt werden soll
                         }
-
-                    };
+                        commandFound = true;
+                        break;
+                    }
                 }
+                if (!commandFound) {
+                    console.log(`Kein passendes Kommando für ${message.triggerName} gefunden.`);
+                }
+            }
+            break;
+                               
     };
 };
 

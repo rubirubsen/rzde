@@ -12,21 +12,20 @@ import fs from 'fs';
 import { JSDOM } from 'jsdom';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';  
-import * as sql from './bot_modules/sql.js';
+import { sql, poolPromise } from './bot_modules/sql.js';
 import { TwitchUser } from './bot_modules/user.js';
 
 dotenv.config()
-
-console.log(`ENV-TEST (NUTZER SA): ${process.env.DB_USER}`);
 
 /** Express für API **/
 const express = (await import('express')).default;
 const app = express();
 const port = 3000;
-const videoCommands = JSON.parse(fs.readFileSync('./datasets/videoCommands.json', 'utf-8'));
-const audioCommands = JSON.parse(fs.readFileSync('./datasets/audioCommands.json', 'utf-8'));
-const videoTrigger = JSON.parse(fs.readFileSync('./datasets/videoTrigger.json', 'utf-8'));
-const emoteTrigger = JSON.parse(fs.readFileSync('./datasets/emoteTrigger.json', 'utf-8'));
+const videoCommands = JSON.parse(fs.readFileSync('./views/datasets/videoCommands.json', 'utf-8'));
+const audioCommands = JSON.parse(fs.readFileSync('./views/datasets/audioCommands.json', 'utf-8'));
+const videoTrigger = JSON.parse(fs.readFileSync('./views/datasets/videoTrigger.json', 'utf-8'));
+const emoteTrigger = JSON.parse(fs.readFileSync('./views/datasets/emoteTrigger.json', 'utf-8'));
+const audioTrigger = JSON.parse(fs.readFileSync('./views/datasets/audioTrigger.json', 'utf-8'));
 
 const twitchConfig = {
     options: {
@@ -50,64 +49,74 @@ const httpsServer = https.createServer(options, app);
 const wss = new WebSocket.Server({server:httpsServer});
 
 let aktiveAnmeldungen = new Map();
+let recentlyPlayedTracks;
 let pokerEndTime = Date.now();
 let socketClient;
 let activeWsClients = [];
 let blisterCards;
 let skipVotes = new Set(); // Speichert User, die abgestimmt haben
 let votingActive = false; // Status der Abstimmung
+let foundTrigger = null;
+let triggerType = null;
 
-// Einmalige Verbindung herstellen
-const poolPromise = await sql.createPool();
+const red = '\x1b[31m';
+const whiteBgRedText = '\x1b[31m\x1b[47m';
+const redBgWhiteText = '\x1b[41m\x1b[37m';
+const whiteBgGreenText = '\x1b[32m\x1b[47m'; 
+const blueBgWhiteText = '\x1b[44m\x1b[37m';
+
+const reset = '\x1b[0m'; // Zurücksetzen der Formatierung
 
 
+function checkForTriggers(message, triggerList) {
+    return Object.keys(triggerList).find(trigger => 
+        message.split(' ').includes(trigger)
+    );
+}
 
+// Middleware für json und Parsing von Formulardaten
 app.use(express.json());
+
 app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
   }));
-
-  
-// Middleware zum Parsen von URL-kodierten Formulardaten
 app.use(express.urlencoded({ extended: true })); 
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Promise Rejection:', reason);
 });
 
-let recentlyPlayedTracks = {
-    tracks: [], // Array für gespeicherte Tracks
-    lastUpdated: null // Optional: Zeitstempel für die letzte Aktualisierung
-};
+
+
 
 /** Websocket Logik */
 wss.on('connection', function connection(ws, req) {
 
     const parameters = new URL(req.url, `http://${req.headers.host}`);
-    const uid = parameters.searchParams.get('uid');
     const clientType = parameters.searchParams.get('client_type');  // Holen des client_type-Parameters
     
     const ip = req.socket.remoteAddress;
     
-    if (uid === process.env.OVERLAY_SECRET) {
-        // Generiere eine eindeutige UUID für jede Verbindung
-        const uniqueId = uuidv4();  // Erstelle eine neue UUID
+       // Generiere eine eindeutige UUID für jede Verbindung
+    const uniqueId = uuidv4();  // Erstelle eine neue UUID
 
-        ws.id = uniqueId;  // Setze die UUID als die eindeutige ID des WebSockets
+    ws.id = uniqueId;  // Setze die UUID als die eindeutige ID des WebSockets
 
-        // Speichere den clientType in der WebSocket-Instanz oder einer globalen Map
-        ws.clientType = clientType;  // Dies hilft, den Client später zu identifizieren
+    // Speichere den clientType in der WebSocket-Instanz oder einer globalen Map
+    ws.clientType = clientType;  // Dies hilft, den Client später zu identifizieren
 
-        // Füge die Verbindung zu den aktiven WebSocket-Clients hinzu
-        activeWsClients.push({ id: uniqueId, ws, clientType });  // Speichere die UUID und clientType
+    // Füge die Verbindung zu den aktiven WebSocket-Clients hinzu
+    activeWsClients.push({ id: uniqueId, ws, clientType });  // Speichere die UUID und clientType
 
-        console.log(`[WS] Verbunden mit Rubi von IP: ${ip}, Client-Typ: ${clientType}. Damit haben wir ${activeWsClients.length} aktiven WS-Verbindungen. `);
+    console.log(`[WS] Verbunden mit Rubi von IP: ${ip}, Client-Typ: ${clientType}. Damit haben wir ${activeWsClients.length} aktiven WS-Verbindungen.`);
+    const connections = activeWsClients.map(client => ({
+        id: client.id,
+        clientType: client.clientType
+      }));
+    console.log(`${redBgWhiteText}[WS] Aktive Verbindungen:${reset}`);
+    console.log(`${blueBgWhiteText}${JSON.stringify(connections, null, 2)}${reset}`);
 
-    } else {
-        ws.close();
-        console.log("Zugriff auf WS geblockt von IP " + ip);
-        return;
-    }
+    
     
     ws.on('message', function incoming(message) {
         // Überprüfen, ob die empfangene Nachricht ein Buffer ist
@@ -143,18 +152,16 @@ wss.on('connection', function connection(ws, req) {
 
     ws.on('close', () => {
         console.log(`+++ WSS CLOSED +++`);
-        
-        // Berechne den hash aus der IP und clientType, genauso wie beim Hinzufügen
-        const ip = req.socket.remoteAddress;  // Hier musst du sicherstellen, dass die IP zugänglich ist
-        const clientType = ws.clientType;     // clientType aus der WebSocket-Instanz
-        
-        const hash = crypto.createHash('sha256').update(ip + clientType).digest('hex');
-        
-        // Filtere den Client aus dem activeWsClients-Array
-        activeWsClients = activeWsClients.filter(client => client.id !== hash);
-        
-        console.log(`Entfernte CLIENT-ID: ${hash}`);
+        activeWsClients = activeWsClients.filter(client => client.id !== ws.id);
+        console.log(`Entfernte CLIENT-ID: ${ws.id}`);
+        const connections = activeWsClients.map(client => ({
+            id: client.id,
+            clientType: client.clientType
+          }));
+        console.log(`${redBgWhiteText}[WS] Aktive Verbindungen:${reset}`);
+        console.log(`${blueBgWhiteText}${JSON.stringify(connections, null, 2)}${reset}`);
     });
+
 });
 
 
@@ -170,7 +177,8 @@ const interval = setInterval(() => {
 }, 30000);  // Alle 30 Sekunden
 
 
-/** Standard-Routing */
+// Routing
+
 app.get('/', (req, res) => {
     res.send("rzde API - admin@rubizockt.de");
 });
@@ -261,7 +269,6 @@ app.get('/spotify/info/artist', async(req, res) => {
         console.error('Fehler beim Lesen oder Speichern der Artist-Daten:', error);
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
-
 });
 
 app.get('/spotify/info/json', async(req, res) => {
@@ -328,8 +335,7 @@ app.get('/spotify/info/lastPlayed', async (req, res) => {
     }
 });
 
-
-/** Routen-Defintionen für TWITCH **/
+// Routing Twitch 
 app.get('/twitch/login', async(req,res) => {
     twitch.twitchLogin(req,res);
 });
@@ -361,7 +367,7 @@ app.get('/twitch/subscribe', async(req, res) => {
         },
         "transport": {
             "method": "websocket",
-            "callback": "http://rubizockt.de:3000/twitch/callback",
+            "callback": "https://rubizockt.de:3000/twitch/callback",
             "secret": "s3cre7"
         }
     }`;
@@ -386,26 +392,6 @@ app.get('/twitch/subscribe', async(req, res) => {
     req.write(data);
     req.end();
 });
-
-
-/** OVERLAY - CONTROL - Route */
-app.post('/overlay/control/command', (req, res) => {
-    const { cmd, message, auth } = req.body;
-    const overlayAuth = process.env.OVERLAY_SECRET;
-    
-    if (auth === overlayAuth) {
-        if(socketClient){
-            console.log(message);
-        } else {
-            console.log("No Client");
-        }
-        res.status(200).send('Command sent');
-    } else {
-        res.status(403).send('Unauthorized');
-    }
-});
-
-
 
 /** WEBSEITEN - AUTH - Route */
 app.post('/auth/login', async (req, res) => {
@@ -452,6 +438,9 @@ tmiClient.on('connected', (address, port) => {
 tmiClient.on('chat', async (channel, tags, message, self) => {
     if (self) return;
     
+    const user = new TwitchUser(tags.username);
+    await user.initializeFromDB();
+
     if (tags.bits) {
         const bits = parseInt(tags.bits);
         if (bits >= 1) {
@@ -465,6 +454,12 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
         let args = message.split(' ');
         const command = args[0];
         
+        let commandCount = await twitch.getCommandCountInDB(command);
+        
+        commandCount = commandCount + 1;
+        
+        twitch.updateCommandCountInDB(command, commandCount);
+
         if (command === '!setVolume') {
             let volumeValue = args[1]; // Holt das Argument, das die Lautstärke angibt
         
@@ -605,7 +600,7 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
                     await user.createInDB();  // Erstelle den Benutzer in der DB
                 }
                 
-                user.songRequestCount += 1;
+                user.songRequestCount = user.songRequestCount + 1;
                 await user.updateSongRequestCountInDB();
                 const songRequestCount = user.songRequestCount;  // Hol dir die Songrequest-Anzahl
 
@@ -804,7 +799,7 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
         /** OVERLAY - TRIGGER */
         if (videoCommands[command] || audioCommands[command]) {
             
-            console.log("Trigger erkannt: ", command);
+            console.log("Mediatrigger erkannt: ", command);
 
             const triggerFile = videoCommands[command] || audioCommands[command];
             if (activeWsClients.length > 0) {
@@ -813,23 +808,71 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
 
             }
         }
-        
+
+        twitch.updateCommandCountInDB(command, commandCount);
     }
 
     // Überprüfe, ob die Nachricht einen Trigger als eigenständiges Wort enthält
-    if (Object.keys(videoTrigger).some(trigger => message.includes(trigger))) {
-        // Ein automatischer Trigger wurde erkannt
-        const triggerFile = videoTrigger[message.split(' ').find(word => videoTrigger[word])];
-        if (activeWsClients.length > 0) {
-            helper.sendAll(activeWsClients, { "cmd": "trigger", "triggerName": triggerFile });
+    foundTrigger = checkForTriggers(message, videoTrigger);
+    if (foundTrigger) {
+        triggerType = "video";
+    }
+
+    // Überprüfe Emote-Trigger, nur wenn kein Video-Trigger gefunden wurde
+    if (!foundTrigger) {
+        foundTrigger = checkForTriggers(message, emoteTrigger);
+        if (foundTrigger) {
+            triggerType = "emote";
         }
     }
+
+    // Überprüfe Audio-Trigger, nur wenn weder Video- noch Emote-Trigger gefunden wurden
+    if (!foundTrigger) {
+        foundTrigger = checkForTriggers(message, audioTrigger);
+        if (foundTrigger) {
+            triggerType = "audio";
+        }
+    }
+
+    if (foundTrigger) {
+        console.log(`Trigger "${foundTrigger}" vom Typ ${triggerType} erkannt.`);
+        
+        // Ermitteln des zugehörigen Triggers aus der entsprechenden Liste
+        let triggerFile;
+        switch (triggerType) {
+            case "video":
+                triggerFile = videoTrigger[foundTrigger];
+                break;
+            case "emote":
+                triggerFile = emoteTrigger[foundTrigger];
+                break;
+            case "audio":
+                triggerFile = audioTrigger[foundTrigger];
+                break;
+        }
     
+        if (activeWsClients.length > 0) {
+            helper.sendAll(activeWsClients, { 
+                "cmd": "trigger", 
+                "triggerName": triggerFile, 
+                "triggerType": triggerType 
+            });
+        }
+    }
+
+
+    try{
+        user.messageCount++;
+        await user.updateMessageCountInDB();
+    }catch(error){
+        console.error(`${redBgWhiteText}Fehler im Chat-Handler: `, error, `${reset}`)
+    }
+    
+
 });
 
 
 /*SERVERSTART*/
-
 httpsServer.listen(port, () => {
     
     setInterval(async () => {

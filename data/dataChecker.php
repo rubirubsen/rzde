@@ -27,68 +27,85 @@
         .missing-json {
             background-color: #ccffcc;
         }
+        .loading {
+            color: #888;
+        }
     </style>
 </head>
 <body>
-    <h1>Media Checker</h1>
-    <?php
-        // Pfade
-        $videoFolder = __DIR__ . '/media/webm/';
-        $mediaJsonFile = __DIR__ . '/datasets/media.json';
-
-        // Videos aus dem Ordner
-        $folderVideos = array_filter(scandir($videoFolder), function($file) {
-            return pathinfo($file, PATHINFO_EXTENSION) === 'webm';
-        });
-
-        // Media aus der media.json
-        $mediaEntries = [];
-        if (file_exists($mediaJsonFile)) {
-            $mediaData = json_decode(file_get_contents($mediaJsonFile), true);
-            foreach ($mediaData as $key => $entry) {
-                $mediaEntries[] = [
-                    'type' => $entry['type'],
-                    'src' => ltrim($entry['src'], './')
-                ];
-            }
-        }
-        
-        // Alle erfassten Dateien aus Ordnern
-        $allFolderFiles = [];
-        foreach ($mediaEntries as $entry) {
-            $typeFolder = __DIR__ . '/' . dirname($entry['src']);
-            $typeFiles = is_dir($typeFolder) ? scandir($typeFolder) : [];
-            $allFolderFiles = array_merge($allFolderFiles, array_map(function($file) use ($typeFolder) {
-                return trim(str_replace(__DIR__ . '/', '', $typeFolder . '/' . $file), '/');
-            }, $typeFiles));
-        }
-
-        // Tabelle darstellen
-        echo "<table>
+    <div id="main">
+        <h1>Medien-Vorschau</h1>
+        <div id="videoDiv">
+            <h2>Video-Befehle</h2>
+            <table id="videoTable">
                 <thead>
                     <tr>
-                        <th>Datei</th>
-                        <th>Im JSON</th>
-                        <th>Im Ordner</th>
+                        <th>Befehl</th>
+                        <th>Vorschau</th>
                     </tr>
                 </thead>
-                <tbody>";
+                <tbody></tbody>
+            </table>
+        </div>
+        <div id="audioDiv">
+            <h2>Audio-Befehle</h2>
+            <table id="audioTable">
+                <thead>
+                    <tr>
+                        <th>Befehl</th>
+                        <th>Vorschau</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        function fetchAndDisplayMedia(folderPath, type, tableID) {
+            fetch(folderPath)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const files = Array.from(doc.querySelectorAll('a')).map(a => a.href.split('/').pop());
 
-        // Alle Dateien aus JSON und Ordner kombinieren
-        $allMediaFiles = array_unique(array_merge(array_column($mediaEntries, 'src'), $allFolderFiles));
-        foreach ($allMediaFiles as $file) {
-            $inJson = in_array($file, array_column($mediaEntries, 'src'));
-            $inFolder = in_array($file, $allFolderFiles);
+                    const filteredFiles = files.filter(file => file.endsWith(type === 'video' ? '.webm' : '.mp3'));
+                    const tableBody = document.querySelector(`#${tableID} tbody`);
 
-            $rowClass = !$inFolder ? 'missing-folder' : (!$inJson ? 'missing-json' : '');
-            echo "<tr class='$rowClass'>
-                    <td>$file</td>
-                    <td>" . ($inJson ? 'Ja' : 'Nein') . "</td>
-                    <td>" . ($inFolder ? 'Ja' : 'Nein') . "</td>
-                  </tr>";
+                    if (filteredFiles.length === 0) {
+                        tableBody.innerHTML = `<tr><td colspan="2">Keine ${type === 'video' ? 'Videodateien' : 'Audiodateien'} gefunden!</td></tr>`;
+                    } else {
+                        filteredFiles.forEach(file => {
+                            const fileName = file.split('.')[0];
+                            const row = document.createElement('tr');
+                            const commandCell = document.createElement('td');
+                            const previewCell = document.createElement('td');
+
+                            commandCell.textContent = `!${fileName}`;
+                            if (type === 'video') {
+                                previewCell.innerHTML = `<video controls preload='none'>
+                                    <source src='${folderPath}/${file}' type='video/webm'>
+                                    Dein Browser unterstützt kein WebM.
+                                </video>`;
+                            } else {
+                                previewCell.innerHTML = `<audio controls preload='none'>
+                                    <source src='${folderPath}/${file}' type='audio/mpeg'>
+                                    Dein Browser unterstützt kein MP3.
+                                </audio>`;
+                            }
+
+                            row.appendChild(commandCell);
+                            row.appendChild(previewCell);
+                            tableBody.appendChild(row);
+                        });
+                    }
+                })
+                .catch(error => console.error('Fehler beim Laden der Dateien:', error));
         }
 
-        echo "</tbody></table>";
-    ?>
+        // Fetch Videos und MP3s
+        fetchAndDisplayMedia('media/webm', 'video', 'videoTable');
+        fetchAndDisplayMedia('media/mp3', 'audio', 'audioTable');
+    </script>
 </body>
 </html>

@@ -2,12 +2,17 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import axios  from 'axios';
 import { access } from 'fs';
+import { sql, poolPromise } from './sql.js';
+
 
 dotenv.config();
 
 const clientId = process.env.TWITCHAPIUSER; // Dein Twitch Client ID hier
 const secret = process.env.TWICHAPISECRET; // Dein Twitch Secret hier
 const redirect_uri_env = process.env.TWITCH_REDIRECT_URI; // URL, zu der Twitch nach dem Login zurückkehrt
+const purpleBgWhiteText = '\x1b[38;5;91m';
+const YellowBgRedText = '\x1b[103m\x1b[31m';
+const reset = '\x1b[0m'; // Zurücksetzen der Formatierung
 
 let accessToken;
 let refreshToken;
@@ -24,10 +29,10 @@ async function getUserId() {
             },
         });
         const userId = response.data.data[0].id;
-        console.log("User ID:", userId);
+        console.log(`${purpleBgWhiteText}User ID:`, userId, `${reset}`);
         return userId;
     } catch (error) {
-        console.error('Fehler beim Abrufen der Benutzer-ID:', error.message);
+        console.error(`${YellowBgRedText}Fehler beim Abrufen der Benutzer-ID:`, error.message, `${reset}`);
         return null;
     }
 }
@@ -96,12 +101,12 @@ export async function twitchTokenRefresh() {
         });
 
         const newAccessToken = response.data.access_token;
-        console.log('New Access Token:', newAccessToken);
+        console.log(`${purpleBgWhiteText}New Access Token aquired.${reset}`);
 
         // Hier kannst du das neue Token speichern oder verwenden
         return newAccessToken;
     } catch (error) {
-        console.error('Error refreshing Twitch token:', error);
+        console.error(`${YellowBgRedText}Error refreshing Twitch token:`,error, `${reset}`);
         throw error;
     }
 }
@@ -121,11 +126,11 @@ async function refreshTokenFunction() {
 
         accessToken = response.data.access_token;
         expires_in = response.data.expires_in;
-        console.log('New Access Token:', accessToken);
+        console.log(`${purpleBgWhiteText}New Access Token aquired${reset}`);
 
         // Hier kannst du das neue Token speichern oder verwenden
     } catch (error) {
-        console.error('Error refreshing Twitch token:', error);
+        console.error(`${YellowBgRedText}Error refreshing Twitch token:`,error, `${reset}`);
         throw error;
     }
 }
@@ -171,17 +176,17 @@ export async function getViewerCount() {
                 },
             }
         );
-        console.log(response.data);
+        console.log(`${purpleBgWhiteText}`,response.data,`${reset}`);
         return response.data.data.length; // Die Anzahl der Chat-Teilnehmer
     } catch (error) {
-        console.error('Fehler beim Abrufen der Zuschaueranzahl:', error.message);
+        console.error(`${YellowBgRedText}Fehler beim Abrufen der Zuschaueranzahl:`, error.message, `${reset}`);
         return 0; // Fallback bei Fehler
     }
 }
 
 // Funktion zum Abrufen des Follow-Datums von Twitch
 export const getFollowDate = async function(clientId, accessToken, fromId) {
-    console.log('User requested Follow-Age: ', fromId);
+    console.log(`${purpleBgWhiteText}User requested Follow-Age:`, fromId, `${reset}`);
     const url = `https://api.twitch.tv/helix/users/follows?from_id=${fromId}&to_id=27766960`;
     // TODO: to_id dynamisieren!
     const headers = new Headers();
@@ -196,7 +201,7 @@ export const getFollowDate = async function(clientId, accessToken, fromId) {
     return fetch(url, requestOptions)
         .then(response => response.json())
         .then(data => {
-            console.log('DATA: ', data);
+            console.log(`${purpleBgWhiteText}DATA:`, data,`${reset}`);
             const followDate = data[0].followed_at;
             return { followDate };
         });
@@ -223,12 +228,12 @@ export const getTwitchBearerToken = async function(username,clientId,clientSecre
         const bearerToken = data.access_token;
         return { username, bearerToken };
     } catch (error) {
-        console.error('Error:', error);
+        console.error(`${YellowBgRedText}Error:`,error, `${reset}`);
         return null;
     }
 }
 
-// CURL Methoden für Slash-Commands [TWITCH] 
+// Whisper TODO // WiP  
 export function twitchWhisper(){
     let streamerID = '';
     let userID = '';
@@ -241,31 +246,32 @@ export function twitchWhisper(){
     'Authorization': `Bearer ${token}`,
     'Client-Id': `${clientId}`,
     'Content-Type': 'application/x-www-form-urlencoded',
-};
+    }
 
-let data = `{"message":"${whiserMessage}"}`;
 
-let result = '';
+    let data = `{"message":"${whiserMessage}"}`;
 
-const req = http.request(url, options, (res) => {
-    console.log(res.statusCode);
+    let result = '';
 
-    res.setEncoding('utf8');
-    res.on('data', (chunk) => {
-        result += chunk;
+    const req = http.request(url, options, (res) => {
+        console.log(res.statusCode);
+        res.setEncoding('utf8');
+        
+        res.on('data', (chunk) => {
+            result += chunk;
+        });
+
+        res.on('end', () => {
+            console.log(result);
+        });
     });
 
-    res.on('end', () => {
-        console.log(result);
+    req.on('error', (e) => {
+        console.error(e);
     });
-});
 
-req.on('error', (e) => {
-    console.error(e);
-});
-
-req.write(data);
-req.end();
+    req.write(data);
+    req.end();
 }
 
 // Funktion zum Abrufen von Benutzerinformationen von Twitch
@@ -323,10 +329,10 @@ export async function setGame(gameName) {
             const patchData = await patchResponse.json();
             
             if (patchData.error) {
-                console.log('Fehler:', patchData.error);
+                console.error(`${YellowBgRedText}Fehler: `, patchData.error,`${reset}`);
                 return { 'msg': 'false', 'error': patchData.error };
             } else {
-                console.log(`Das Spiel wurde auf "${gameName}" gesetzt.`);
+                console.log(`${purpleBgWhiteText} Das Spiel wurde auf "${gameName}" gesetzt.${reset}`);
                 return { 'msg': 'true' };
             }
 
@@ -334,7 +340,73 @@ export async function setGame(gameName) {
             return { 'msg': 'notfound' };
         }
     } catch (error) {
-        console.error('Fehler beim Abrufen der Spiel-ID:', error);
+        console.error(`${YellowBgRedText}Fehler beim Abrufen der Spiel-ID:`,error, `${reset}`);
         return { 'msg': 'false', 'error': error };
+    }
+}
+
+export async function getCommandCountInDB(command) {
+    
+    const cleanedCommand = command.replace(/[^a-zA-Z0-9_]/g, '') || command;
+    
+    try {
+        
+        let pool = await poolPromise;
+        let result = await pool
+            .request()
+            .input("command", sql.VarChar, cleanedCommand) // Typ angeben!
+            .query(`SELECT frequency FROM tbl_commands WHERE command = @command`); // Nur benötigte Spalte abrufen!
+
+        if (result.recordset.length > 0) {
+            
+            const parsedCount = parseInt(result.recordset[0].frequency, 10); // Sicherstellen, dass es eine Ganzzahl ist
+            return parsedCount;
+
+        } else {
+            
+            console.log(`${command} nicht in der DB gefunden.`);
+            return 0; // Rückgabe eines sicheren Standardwerts
+
+        }
+    } catch (err) {
+
+        console.error("Fehler beim Abrufen von Command:", err);
+        return null; // Fehlerhandling verbessern
+
+    }
+}
+
+export async function updateCommandCountInDB(command, commandCount) {
+    const cleanedCommand = command.replace(/[^a-zA-Z0-9_]/g, '') || command;
+    const parsedCount = parseInt(commandCount, 10); // Sicherstellen, dass es eine Ganzzahl ist
+
+    if (isNaN(parsedCount)) {
+        console.error(`Ungültiger Wert für commandCount: ${commandCount}`);
+        return; // Abbrechen, wenn keine gültige Zahl
+    }
+
+    try {
+        const pool = await poolPromise;
+        const now = new Date();
+
+        // Parametrisierte Abfrage zur Sicherheit
+        await pool.request()
+            .input('command', sql.VarChar, cleanedCommand)
+            .input('frequency', sql.Int, commandCount)
+            .input('date_now', sql.DateTime, now)
+            .query(`
+                MERGE tbl_commands AS target
+                USING (SELECT @command AS command) AS source
+                ON target.command = source.command
+                WHEN MATCHED THEN 
+                    UPDATE SET frequency = @frequency, date_last_used = @date_now
+                WHEN NOT MATCHED THEN 
+                    INSERT (command, frequency, date_added, date_last_used) 
+                    VALUES (@command, @frequency, @date_now, @date_now);
+            `);
+
+        console.log(`${purpleBgWhiteText}${command} NEU: ${commandCount}.${reset}`);
+    } catch (err) {
+        console.error("Fehler beim Aktualisieren des CommandCounts:", err);
     }
 }
