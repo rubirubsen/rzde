@@ -1,4 +1,5 @@
 {
-  "watch": "/app/", 
-  "ignore": "/app/views/spotify/info/*" 
+  "watch": ["/app/"], 
+  "ignore": ["/app/views/spotify/info/*"],
+  "ext": "js"
 }

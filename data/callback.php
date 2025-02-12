@@ -16,7 +16,7 @@ $session = new SpotifyWebAPI\Session(
 );
 
 $options = [
-  'scope' => ['user-read-private', 'user-read-email'],
+  'scope' => ['user-read-private', 'user-read-email', 'user-modify-playback-state','playlist-modify-private'],
 ];
 
 if (isset($_GET['code'])) {

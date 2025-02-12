@@ -1,0 +1,6 @@
+{
+    "track": "/app/views/spotify/info/current_track.txt",
+    "artist": "/app/views/spotify/info/current_artist.txt",
+    "json": "/app/views/spotify/info/current_track.json",
+    "image": "/app/views/spotify/info/current_image.jpg"
+}

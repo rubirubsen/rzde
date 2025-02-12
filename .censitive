@@ -1,5 +1,5 @@
 // Format <globPattern>:[keyRegex]
 .env:.*_KEY,.*_token,.*_PassWord, .*PW
 id_rsa:*
-docker-compose.yml:.*_KEY,.*_token,.*_PassWord, .*PW
+wdocker-compose.yml:.*_KEY,.*_token,.*_PassWord, .*PW, *_PASSSWORD, _*PASSWORD, *PASSWORD,
 data/creds.php:.*name*,.*password,.*_secret

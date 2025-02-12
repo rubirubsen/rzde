@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktives Buch</title>
+    <link rel="stylesheet" href="css/tcg_album.css">
+</head>
+<body>
+    <div class="backTxt">
+        <a href="javascript:history.back()"><== Go Back</a>
+    </div>
+    <div class="book">
+        <div class="page cover-front" onclick="flipPage(0)">
+            <div class="front"><img src="img/rz_transparent.png" class="bookLogo"><img src="img/tcg_sticker/sticker2.png" class="coverTCG"></div>
+            <div class="back"><img src="img/tcg_sticker/sticker1.png" style="width:120px" class="sticker1"><img src="img/tcg_sticker/sticker3.png" class="sticker3"></div>
+        </div>
+        <div class="page" onclick="flipPage(1)">
+            <div class="front">
+                <div class="front_div1"><center>1/12</center></div>
+                <div class="front_div2"><div class="card"></div></div>
+                <div class="front_div3"><div class="card"></div></div>
+                <div class="front_div4"><div class="card"></div></div>
+                <div class="front_div5"><div class="card"></div></div>
+                <div class="front_div6"><div class="card"></div></div>
+                <div class="front_div7"><div class="card"></div></div>
+                <div class="front_div8"><div class="card"></div></div>
+                <div class="front_div9"><div class="card"></div></div>
+                <div class="front_div10"><div class="card"></div></div>
+                <div class="front_div11"><div class="card"></div></div>
+                <div class="front_div12"><div class="card"></div></div>
+                <div class="front_div13"><div class="card"></div></div>
+            </div>
+            <div class="back">
+                <div class="front_div1"><center>2/12</center></div>
+                <div class="front_div2"><div class="card"></div></div>
+                <div class="front_div3"><div class="card"></div></div>
+                <div class="front_div4"><div class="card"></div></div>
+                <div class="front_div5"><div class="card"></div></div>
+                <div class="front_div6"><div class="card"></div></div>
+                <div class="front_div7"><div class="card"></div></div>
+                <div class="front_div8"><div class="card"></div></div>
+                <div class="front_div9"><div class="card"></div></div>
+                <div class="front_div10"><div class="card"></div></div>
+                <div class="front_div11"><div class="card"></div></div>
+                <div class="front_div12"><div class="card"></div></div>
+                <div class="front_div13"><div class="card"></div></div>
+            </div>
+        </div>
+        <div class="page" onclick="flipPage(2)">
+            <div class="front">
+                <div class="front_div1"><center>3/12</center></div>
+                <div class="front_div2"><div class="card"></div></div>
+                <div class="front_div3"><div class="card"></div></div>
+                <div class="front_div4"><div class="card"></div></div>
+                <div class="front_div5"><div class="card"></div></div>
+                <div class="front_div6"><div class="card"></div></div>
+                <div class="front_div7"><div class="card"></div></div>
+                <div class="front_div8"><div class="card"></div></div>
+                <div class="front_div9"><div class="card"></div></div>
+                <div class="front_div10"><div class="card"></div></div>
+                <div class="front_div11"><div class="card"></div></div>
+                <div class="front_div12"><div class="card"></div></div>
+                <div class="front_div13"><div class="card"></div></div>
+            </div>
+            <div class="back">
+                <div class="front_div1"><center>4/12</center></div>
+                <div class="front_div2"><div class="card"></div></div>
+                <div class="front_div3"><div class="card"></div></div>
+                <div class="front_div4"><div class="card"></div></div>
+                <div class="front_div5"><div class="card"></div></div>
+                <div class="front_div6"><div class="card"></div></div>
+                <div class="front_div7"><div class="card"></div></div>
+                <div class="front_div8"><div class="card"></div></div>
+                <div class="front_div9"><div class="card"></div></div>
+                <div class="front_div10"><div class="card"></div></div>
+                <div class="front_div11"><div class="card"></div></div>
+                <div class="front_div12"><div class="card"></div></div>
+                <div class="front_div13"><div class="card"></div></div>
+            </div>
+        </div>
+        <div class="page" onclick="flipPage(3)">
+            <div class="front">
+                <div class="front_div1"><center>5/12</center></div>
+                <div class="front_div2"><div class="card"></div></div>
+                <div class="front_div3"><div class="card"></div></div>
+                <div class="front_div4"><div class="card"></div></div>
+                <div class="front_div5"><div class="card"></div></div>
+                <div class="front_div6"><div class="card"></div></div>
+                <div class="front_div7"><div class="card"></div></div>
+                <div class="front_div8"><div class="card"></div></div>
+                <div class="front_div9"><div class="card"></div></div>
+                <div class="front_div10"><div class="card"></div></div>
+                <div class="front_div11"><div class="card"></div></div>
+                <div class="front_div12"><div class="card"></div></div>
+                <div class="front_div13"><div class="card"></div></div>
+            </div>
+            <div class="back">
+                <div class="front_div1"><center>6/12</center></div>
+                <div class="front_div2"><div class="card"></div></div>
+                <div class="front_div3"><div class="card"></div></div>
+                <div class="front_div4"><div class="card"></div></div>
+                <div class="front_div5"><div class="card"></div></div>
+                <div class="front_div6"><div class="card"></div></div>
+                <div class="front_div7"><div class="card"></div></div>
+                <div class="front_div8"><div class="card"></div></div>
+                <div class="front_div9"><div class="card"></div></div>
+                <div class="front_div10"><div class="card"></div></div>
+                <div class="front_div11"><div class="card"></div></div>
+                <div class="front_div12"><div class="card"></div></div>
+                <div class="front_div13"><div class="card"></div></div>
+            </div>
+        </div>
+        <div class="page" onclick="flipPage(4)">
+            <div class="front">
+                <div class="front_div1"><center>7/12</center></div>
+                <div class="front_div2"><div class="card"></div></div>
+                <div class="front_div3"><div class="card"></div></div>
+                <div class="front_div4"><div class="card"></div></div>
+                <div class="front_div5"><div class="card"></div></div>
+                <div class="front_div6"><div class="card"></div></div>
+                <div class="front_div7"><div class="card"></div></div>
+                <div class="front_div8"><div class="card"></div></div>
+                <div class="front_div9"><div class="card"></div></div>
+                <div class="front_div10"><div class="card"></div></div>
+                <div class="front_div11"><div class="card"></div></div>
+                <div class="front_div12"><div class="card"></div></div>
+                <div class="front_div13"><div class="card"></div></div>
+            </div>
+            <div class="back">
+                <div class="front_div1"><center>8/12</center></div>
+                <div class="front_div2"><div class="card"></div></div>
+                <div class="front_div3"><div class="card"></div></div>
+                <div class="front_div4"><div class="card"></div></div>
+                <div class="front_div5"><div class="card"></div></div>
+                <div class="front_div6"><div class="card"></div></div>
+                <div class="front_div7"><div class="card"></div></div>
+                <div class="front_div8"><div class="card"></div></div>
+                <div class="front_div9"><div class="card"></div></div>
+                <div class="front_div10"><div class="card"></div></div>
+                <div class="front_div11"><div class="card"></div></div>
+                <div class="front_div12"><div class="card"></div></div>
+                <div class="front_div13"><div class="card"></div></div>
+            </div>
+        </div>
+        <div class="page" onclick="flipPage(5)">
+            <div class="front">
+                <div class="front_div1"><center>9/12</center></div>
+                <div class="front_div2"><div class="card"></div></div>
+                <div class="front_div3"><div class="card"></div></div>
+                <div class="front_div4"><div class="card"></div></div>
+                <div class="front_div5"><div class="card"></div></div>
+                <div class="front_div6"><div class="card"></div></div>
+                <div class="front_div7"><div class="card"></div></div>
+                <div class="front_div8"><div class="card"></div></div>
+                <div class="front_div9"><div class="card"></div></div>
+                <div class="front_div10"><div class="card"></div></div>
+                <div class="front_div11"><div class="card"></div></div>
+                <div class="front_div12"><div class="card"></div></div>
+                <div class="front_div13"><div class="card"></div></div>
+            </div>
+            <div class="back">
+                <div class="front_div1"><center>10/12</center></div>
+                <div class="front_div2"><div class="card"></div></div>
+                <div class="front_div3"><div class="card"></div></div>
+                <div class="front_div4"><div class="card"></div></div>
+                <div class="front_div5"><div class="card"></div></div>
+                <div class="front_div6"><div class="card"></div></div>
+                <div class="front_div7"><div class="card"></div></div>
+                <div class="front_div8"><div class="card"></div></div>
+                <div class="front_div9"><div class="card"></div></div>
+                <div class="front_div10"><div class="card"></div></div>
+                <div class="front_div11"><div class="card"></div></div>
+                <div class="front_div12"><div class="card"></div></div>
+                <div class="front_div13"><div class="card"></div></div>
+            </div>
+        </div>
+        <div class="page" onclick="flipPage(6)">
+            <div class="front">
+                <div class="front_div1"><center>11/12</center></div>
+                <div class="front_div2"><div class="card"></div></div>
+                <div class="front_div3"><div class="card"></div></div>
+                <div class="front_div4"><div class="card"></div></div>
+                <div class="front_div5"><div class="card"></div></div>
+                <div class="front_div6"><div class="card"></div></div>
+                <div class="front_div7"><div class="card"></div></div>
+                <div class="front_div8"><div class="card"></div></div>
+                <div class="front_div9"><div class="card"></div></div>
+                <div class="front_div10"><div class="card"></div></div>
+                <div class="front_div11"><div class="card"></div></div>
+                <div class="front_div12"><div class="card"></div></div>
+                <div class="front_div13"><div class="card"></div></div>
+            </div>
+            <div class="back">
+                <div class="front_div1"><center>12/12</center></div>
+                <div class="front_div2"><div class="card"></div></div>
+                <div class="front_div3"><div class="card"></div></div>
+                <div class="front_div4"><div class="card"></div></div>
+                <div class="front_div5"><div class="card"></div></div>
+                <div class="front_div6"><div class="card"></div></div>
+                <div class="front_div7"><div class="card"></div></div>
+                <div class="front_div8"><div class="card"></div></div>
+                <div class="front_div9"><div class="card"></div></div>
+                <div class="front_div10"><div class="card"></div></div>
+                <div class="front_div11"><div class="card"></div></div>
+                <div class="front_div12"><div class="card"></div></div>
+                <div class="front_div13"><div class="card"></div></div>
+            </div>
+        </div>
+        <div class="page" onclick="flipPage(7)">
+            <div class="front" style="color:white;font-family: 'Hand of Sean';">
+                <div class="notesBack">
+                    <center>
+                        <p>
+                            <h1 style="-webkit-text-stroke-width:1px;-webkit-text-stroke-color:rgb(161, 161, 161);"><center>Missing Cards:</center></h1>
+                        </p>
+                        <p style="color: rgb(0, 94, 0);-webkit-text-stroke-width:0.5px;-webkit-text-stroke-color:rgb(0, 0, 0);font-weight:bold;font-size: 2em;"> Earth:
+                        </p>
+                    <div class="progress-container" onmouseover="">
+                        <div class="tooltip">
+                            <div class="progress-bar" style="width: 70%;">70% geschafft</div>
+                            <span class="tooltiptext">Dir fehlen: 001, 008, 014,018,023</span>
+                        </div>
+                    </div>
+                    <p style="color: firebrick;-webkit-text-stroke-width:0.5px;-webkit-text-stroke-color:white;font-weight: bold;font-size: 2em;"> Fire:
+                    </p>
+                    
+                    <div class="progress-container" onmouseover="">
+                        <div class="tooltip">
+                            <div class="progress-bar-fire" style="width: 60%;">60% geschafft</div>
+                            <span class="tooltiptext">Dir fehlen: 027, 028, 031,038,045.047,048</span>
+                        </div>
+                    </div>
+                    </center>
+                </div>
+            </div>
+            <div class="back"></div>
+        </div>
+    </div>
+
+    <script>
+        
+        function flipPage(pageIndex) {
+            const pages = document.querySelectorAll('.page');
+            const isFlippingForward = !pages[pageIndex].classList.contains('flipped');
+            
+            // Transition für Z-Index setzen
+            for (let i = 0; i < pages.length; i++) {
+                if (isFlippingForward) {
+                    pages[i].style.transition = 'transform 1s ease, z-index 0s linear';
+                } else {
+                    pages[i].style.transition = 'transform 1s ease, z-index 0s linear 0.2s';
+                }
+            }
+            
+            pages[pageIndex].classList.toggle('flipped');
+            
+            // Z-Index dynamisch anpassen
+            for (let i = 0; i < pages.length; i++) {
+                if (isFlippingForward) {
+                    setTimeout(()=> {
+                        if (pages[i].classList.contains('flipped')) {
+                            pages[i].style.zIndex = 12 + i;
+                        } else {
+                            pages[i].style.zIndex = 13 - i;
+                        }
+                    },350)                    
+                } else {
+                    // Rückwärtsblättern: Mit Verzögerung
+                    setTimeout(() => {
+                        if (pages[i].classList.contains('flipped')) {
+                            pages[i].style.zIndex = 12 + i;
+                        } else {
+                            pages[i].style.zIndex = 13 - i;
+                        }
+                    }, 50);
+                }
+            }
+            
+            // Transition nach Abschluss zurücksetzen
+            setTimeout(() => {
+                for (let i = 0; i < pages.length; i++) {
+                    pages[i].style.transition = 'transform 1s ease';
+                }
+            }, 1000);
+        }
+
+    </script>
+</body>
+</html>
