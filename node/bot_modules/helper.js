@@ -2,6 +2,7 @@
 import http from 'https';
 import fetch from 'node-fetch';
 import { parseStringPromise } from 'xml2js';
+import console2025 from './logging.js';
 
 // Funktion zur Generierung einer Zufallszahl
 export const randomNumber = function(maxVal) {
@@ -32,7 +33,7 @@ export function readFileContent(filePath) {
 export function saveToJson(filePath, data) {
     const jsonData = JSON.stringify(data, null, 2);
     fs.writeFileSync(filePath, jsonData, 'utf8');
-    console.log('Daten in JSON-Datei gespeichert:', filePath);
+    console2025.log('server',`Daten in JSON-Datei gespeichert: ${filePath}`, 'info');
 }
 
 export async function getRssFeed() {

@@ -1,10 +1,9 @@
 import dotenv from 'dotenv';
-import crypto from 'crypto';
 import WebSocket from 'ws';
 import tmi, { Client } from 'tmi.js';
 import Poker from './bot_modules/poker.js';
 import * as helper from './bot_modules/helper.js';
-import * as twitch from './bot_modules/twitch.js';
+import * as twitch from './bot_modules/twitch/twitch.js';
 import * as spotify from './bot_modules/spotify.js';
 import https from 'https';
 import http from 'http';
@@ -13,7 +12,9 @@ import { JSDOM } from 'jsdom';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';  
 import { sql, poolPromise } from './bot_modules/sql.js';
-import { TwitchUser } from './bot_modules/user.js';
+import { TwitchUser } from './bot_modules/twitch/user.js';
+import console2025 from './bot_modules/logging.js';
+import { info } from 'console';
 
 dotenv.config()
 
@@ -113,8 +114,8 @@ wss.on('connection', function connection(ws, req) {
         id: client.id,
         clientType: client.clientType
       }));
-    console.log(`${redBgWhiteText}[WS] Aktive Verbindungen:${reset}`);
-    console.log(`${blueBgWhiteText}${JSON.stringify(connections, null, 2)}${reset}`);
+    console2025.log('websocket',`[WS] Aktive Verbindungen:${reset}`, info);
+    console2025.log('websocket', `${JSON.stringify(connections, null, 2)}`, info);
 
     
     
