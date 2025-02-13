@@ -23,7 +23,7 @@ const COLORS = {
     BLUE: '\x1b[34m',
     MAGENTA: '\x1b[35m',
     CYAN: '\x1b[36m',
-    PURPLE: '\x1b[38;5;93m', // Helleres Lila
+    PURPLE: '\x1b[38;5;55m', // Helleres Lila
 
     // Hintergrundfarben
     BG_BLACK: '\x1b[40m',
@@ -34,7 +34,7 @@ const COLORS = {
     BG_MAGENTA: '\x1b[45m',
     BG_CYAN: '\x1b[46m',
     BG_WHITE: '\x1b[47m',
-    BG_PURPLE: '\x1b[48;5;93m', // Helleres Lila als Hintergrund
+    BG_PURPLE: '\x1b[48;5;55m', // Helleres Lila als Hintergrund
     BG_DARK_GRAY: '\x1b[48;5;235m', // Dunkles Grau
     BG_LIGHT_GRAY: '\x1b[48;5;250m', // Helles Grau
     BG_DARK_GREEN: '\x1b[48;5;22m', // Dunkles Grün

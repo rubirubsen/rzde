@@ -4,6 +4,7 @@ import tmi, { Client } from 'tmi.js';
 import Poker from './bot_modules/poker.js';
 import * as helper from './bot_modules/helper.js';
 import * as twitch from './bot_modules/twitch/twitch.js';
+import * as twitchAuth from './bot_modules/twitch/auth.js';
 import * as spotify from './bot_modules/spotify.js';
 import https from 'https';
 import http from 'http';
@@ -149,18 +150,28 @@ wss.on('connection', function connection(ws, req) {
     });
 
     ws.isAlive = true;
+    
     ws.on('pong', () => ws.isAlive = true);
+    
+    ws.onerror = (evt) => {
+        console.error("WebSocket-Fehler:", {
+            message: evt.message || "Unbekannter Fehler",
+            event: evt
+        });
+    };
 
-    ws.on('close', () => {
+    ws.on('close', (reason) => {
         console.log(`+++ WSS CLOSED +++`);
+        console.log(reason);
+
         activeWsClients = activeWsClients.filter(client => client.id !== ws.id);
         console.log(`Entfernte CLIENT-ID: ${ws.id}`);
         const connections = activeWsClients.map(client => ({
             id: client.id,
             clientType: client.clientType
           }));
-        console.log(`${redBgWhiteText}[WS] Aktive Verbindungen:${reset}`);
-        console.log(`${blueBgWhiteText}${JSON.stringify(connections, null, 2)}${reset}`);
+        console2025.log("websocket","[WS] Aktive Verbindungen:", "info");
+        console2025.log("websocket",JSON.stringify(connections, null, 2), "info");
     });
 
 });
@@ -458,8 +469,7 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
         let commandCount = await twitch.getCommandCountInDB(command);
         
         commandCount = commandCount + 1;
-        
-        twitch.updateCommandCountInDB(command, commandCount);
+        await twitch.updateCommandCountInDB(command, commandCount);
 
         if (command === '!setVolume') {
             let volumeValue = args[1]; // Holt das Argument, das die Lautstärke angibt
@@ -766,7 +776,7 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
                     tmiClient.say(channel, `Spiel: ${gameName} nicht gesetzt. Fehler: ${setGame.error}`);
                 }
             } catch (error) {
-                console.error('Fehler beim Setzen des Spiels:', error);
+                console.error("twitch", `Fehler beim Setzen des Spiels: ${JSON.stringify(error)}` );
                 tmiClient.say(channel, 'Es gab einen Fehler beim Setzen des Spiels.');
             }
 
@@ -800,7 +810,8 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
         /** OVERLAY - TRIGGER */
         if (videoCommands[command] || audioCommands[command]) {
             
-            console.log("Mediatrigger erkannt: ", command);
+            console2025.log("server",`Mediatrigger erkannt: ${command}`);
+
 
             const triggerFile = videoCommands[command] || audioCommands[command];
             if (activeWsClients.length > 0) {
@@ -810,7 +821,6 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
             }
         }
 
-        twitch.updateCommandCountInDB(command, commandCount);
     }
 
     // Überprüfe, ob die Nachricht einen Trigger als eigenständiges Wort enthält
@@ -866,7 +876,7 @@ tmiClient.on('chat', async (channel, tags, message, self) => {
         user.messageCount++;
         await user.updateMessageCountInDB();
     }catch(error){
-        console.error(`${redBgWhiteText}Fehler im Chat-Handler: `, error, `${reset}`)
+        console2025.error("twitch",`Fehler im Chat-Handler:  ${JSON.stringify(error)}`)
     }
     
 

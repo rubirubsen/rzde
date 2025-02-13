@@ -5,38 +5,26 @@ import axios from "axios";
 import { access } from "fs";
 import { sql, poolPromise } from "../sql.js";
 import console2025 from "../logging.js";
+import { cleanupObsoleteSubscriptions,  getBroadcasterUserId,subscribeToEvents, handleEvent } from './events.js';
 
 dotenv.config();
 
 const clientId = process.env.TWITCHAPIUSER; // Dein Twitch Client ID hier
 const secret = process.env.TWICHAPISECRET; // Dein Twitch Secret hier
 const redirect_uri_env = process.env.TWITCH_REDIRECT_URI; // URL, zu der Twitch nach dem Login zurückkehrt
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-
-let accessToken;
-let refreshToken;
-let expires_in;
-let state;
+export let accessToken;
+export let refreshToken;
+export let expires_in;
+export let state;
 let callbackState;
 let reconnectDelay = 10000;
 let broadcaster_user_id = process.env.TWITCH_BROADCASTER_ID;
+let currentSessionId = '';
+let activeSubscriptions = []; 
+let keepAliveCounter = 0;
 
-async function getBroadcasterUserId() {
-    try {
-        const response = await axios.get("https://api.twitch.tv/helix/users", {
-            headers: {
-                "Client-Id": clientId,
-                Authorization: `Bearer ${accessToken}`,
-            },
-        });
-        const userId = response.data.data[0].id;
-        console2025.log("twitch",`Broadcaster User ID:  ${userId}`, "info");
-        return userId;
-    } catch (error) {
-        console2025.log("twitch",`Fehler beim Abrufen der Benutzer-ID: ${error.message}`, "error");
-        return null;
-    }
-}
 
 async function refreshTokenFunction() {
     try {
@@ -79,170 +67,85 @@ export const twitchLogin = function (req, res) {
     res.redirect(url);
 };
 
+
 // EventSub WebSocket-Verbindung
 function connectWebSocket() {
     const ws = new WebSocket("wss://eventsub.wss.twitch.tv/ws");
 
     ws.on("open", () => {
         console2025.log('websocket', "WebSocket verbunden", 'info');
+        reconnectDelay = 10000; // Zurücksetzen der Wiederverbindungsverzögerung bei erfolgreicher Verbindung
     });
 
     ws.on("ping", () => {
-        console2025.log('websocket','Ping bekommen', 'info');
+        console2025.log('websocket', 'Ping bekommen', 'info');
     });
 
-    ws.on("message", (data) => {
+    ws.on("message", async (data) => {
         const message = JSON.parse(data);
 
         // Überprüfe, ob es sich um die Session-Welcome-Nachricht handelt
-        if ( message.metadata && message.metadata.message_type === "session_welcome" ) {
+        if (message.metadata && message.metadata.message_type === "session_welcome") {
+            currentSessionId = message.payload.session.id;
+            console2025.log('twitch', `Session ID erhalten: ${currentSessionId}`, 'info');
 
-            const sessionId = message.payload.session.id;
-            console2025.log('twitch', `Session ID erhalten:  ${sessionId}`, 'info');
-            subscribeToEvents(sessionId);
+            try {
+                // Zuerst die neuen Subscriptions erstellen, während die WebSocket-Verbindung aktiv ist
+                console2025.info('twitch', 'Erstelle neue Subscriptions...');
+                await subscribeToEvents(currentSessionId, accessToken);
 
-        } else if ( message.metadata && message.metadata.message_type === "notification" ) {
+                // Danach die obsoleten Subscriptions im Hintergrund bereinigen
+                console2025.info('twitch', 'Bereinige obsolete Subscriptions im Hintergrund...');
+                cleanupObsoleteSubscriptions().catch(error => {
+                    console2025.error('twitch', {
+                        message: 'Fehler bei der Hintergrundbereinigung der obsoleten Subscriptions',
+                        error: error.message,
+                    });
+                });
+
+                console2025.info('twitch', {
+                    message: 'Subscriptions erfolgreich erstellt und Bereinigung im Hintergrund gestartet',
+                    sessionId: currentSessionId,
+                });
+            } catch (error) {
+                console2025.error('twitch', {
+                    message: 'Fehler bei der Erstellung der Subscriptions',
+                    error: error.message,
+                });
+            }
+
+        } else if (message.metadata && message.metadata.message_type === "notification") {
             console2025.log('twitch', JSON.stringify(message), 'log');
             // Falls es sich nicht um die Session-Welcome-Nachricht handelt, handle das Event
             handleEvent(message.payload);
-        } else if ( message.metadata && message.metadata.message_type === "session_keepalive" ) {
-            console2025.log("twitch","Session Keepalive erhalten","log");
+        } else if (message.metadata && message.metadata.message_type === "session_keepalive") {
+            if(keepAliveCounter < 1){
+                console2025.log("twitch", "Session Keepalive erhalten", "log");
+                keepAliveCounter = 1;
+            }
+        } else if (message.metadata && message.metadata.message_type === "session_reconnect") {
+            console2025.warn('twitch', 'Session-Reconnect-Nachricht erhalten. Verbindung wird neu hergestellt.');
+            ws.close(); // Schließe die aktuelle Verbindung, um eine neue zu starten
+        } else if (message.metadata && message.metadata.message_type === "session_disconnect") {
+            console2025.warn('twitch', 'Session-Disconnect-Nachricht erhalten. Verbindung wird geschlossen.');
+            ws.close();
         }
     });
 
     ws.on("close", (code, reason) => {
         console2025.log('websocket', "WebSocket-Verbindung geschlossen", 'warn');
-        console2025.log('websocket', `WebSocket closed with code: ${code} and reason: ${reason}`);
+        console2025.log('websocket', `WebSocket closed with code: ${code} and reason: ${reason.toString()}`, 'warn');
+        console2025.info('websocket', `Versuche, in ${reconnectDelay / 1000} Sekunden erneut zu verbinden...`);
         setTimeout(connectWebSocket, reconnectDelay);
-        reconnectDelay = Math.min(reconnectDelay * 2, 60000); // exponentielle Rückverzögerung, max 60 Sekunden
+        reconnectDelay = Math.min(reconnectDelay * 2, 60000); // Exponentielle Rückverzögerung, max 60 Sekunden
     });
 
     ws.on("error", (err) => {
-        console2025.log('websocket', `WebSocket Fehler: ${JSON.stringify(err)}`, 'error');
+        console2025.error('websocket', `WebSocket Fehler: ${err.message}`, 'error');
     });
 }
+    
 
-// Subscription für Events (z. B. für Channel-Punkte-Einlösungen)
-async function subscribeToEvents(sessionId) {
-    broadcaster_user_id = await getBroadcasterUserId();
-
-    const rewardPayload = {
-        type: "channel.channel_points_custom_reward_redemption.add",
-        version: "1",
-        condition: {
-            broadcaster_user_id: broadcaster_user_id,
-        },
-        transport: {
-            method: "websocket",
-            session_id: sessionId,
-        },
-    };
-
-    const streamOnlinePayload = {
-        type: "stream.online",
-        version: "1",
-        condition: {
-            broadcaster_user_id: broadcaster_user_id,
-        },
-        transport: {
-            method: "websocket",
-            session_id: sessionId,
-        },
-    };
-
-    const chatPayload = {
-        type: "channel.chat.message",
-        version: "1",
-        condition: {
-            broadcaster_user_id: broadcaster_user_id,
-            "user_id": "27766960"
-        },
-        transport: {
-            method: "websocket",
-            session_id: sessionId,
-        },
-    };
-
-    const streamOfflinePayload = {
-        type: "stream.offline",
-        version: "1",
-        condition: {
-            broadcaster_user_id: broadcaster_user_id,
-        },
-        transport: {
-            method: "websocket",
-            session_id: sessionId,
-        },
-    };
-
-    try {
-        // Subscription via REST API statt WebSocket senden
-        const rewardPayloadResponse = await axios.post(
-            "https://api.twitch.tv/helix/eventsub/subscriptions",
-            rewardPayload,
-            {
-                headers: {
-                    "Client-Id": clientId, // Deine Twitch Client-ID hier
-                    Authorization: `Bearer ${accessToken}`, // Dein User Access Token hier
-                    "Content-Type": "application/json",
-                },
-            }
-        );
-        console.log( "Subscription erfolgreich erstellt:", rewardPayloadResponse.data);
-
-        const streamOnlineResponse = await axios.post(
-            "https://api.twitch.tv/helix/eventsub/subscriptions",
-            streamOnlinePayload,
-            {
-                headers: {
-                    "Client-Id": clientId, // Deine Twitch Client-ID hier
-                    Authorization: `Bearer ${accessToken}`, // Dein User Access Token hier
-                    "Content-Type": "application/json",
-                },
-            }
-        );
-        console.log( "Subscription erfolgreich erstellt:", streamOnlineResponse.data);
-        
-        const streamOfflineResponse = await axios.post(
-            "https://api.twitch.tv/helix/eventsub/subscriptions",
-            streamOfflinePayload,
-            {
-                headers: {
-                    "Client-Id": clientId, // Deine Twitch Client-ID hier
-                    Authorization: `Bearer ${accessToken}`, // Dein User Access Token hier
-                    "Content-Type": "application/json",
-                },
-            }
-        );
-
-        const chatResponse = await axios.post(
-            "https://api.twitch.tv/helix/eventsub/subscriptions",
-            chatPayload,
-            {
-                headers: {
-                    "Client-Id": clientId, // Deine Twitch Client-ID hier
-                    Authorization: `Bearer ${accessToken}`, // Dein User Access Token hier
-                    "Content-Type": "application/json",
-                },
-            }
-        );
-
-        console.log("Subscription erfolgreich erstellt:",streamOfflineResponse.data);
-
-    } catch (error) {
-        console.error("Fehler beim Erstellen der Subscription:",error.response ? error.response.data : error.message);
-    }
-}
-
-// Event-Handling (Verarbeiten der empfangenen Twitch-Events)
-function handleEvent(eventData) {
-    console2025.log("twitch",`Empfangenes Event:  ${eventData}`, "info");
-    // Verarbeite das Event
-    if (eventData.subscription.type === "channel.channel_points_custom_reward_redemption.add") {
-        const redemption = eventData.event;
-        console2025.log("twitch", `Punkte eingelöst: ${redemption.reward.title} von ${redemption.user_name}`, "info");
-    }
-}
 
 // Die WebSocket-Verbindung öffnen und abonnieren
 function startWebSocket() {
@@ -274,7 +177,7 @@ export const twitchCallback = async function (code, scope, state, req, res) {
                   }
                */
             // Hier kannst du die Tokens aus der Response weiterverarbeiten
-            accessToken = response.data["access_token"]; //OAuth Token
+            process.env.TWITCH_ACCESS_TOKEN = accessToken = response.data["access_token"]; //OAuth Token
             refreshToken = response.data["refresh_token"];
             expires_in = response.data["expires_in"];
             console.log("Twitch callback received with code:", code);
@@ -497,6 +400,7 @@ export async function setGame(gameName) {
         );
 
         const data = await response.json();
+        console2025.info("twitch", `Spiel-ID gefunden: ${data.data[0].id}`);
 
         if (data && data.data && data.data.length > 0) {
             const gameId = data.data[0].id; // Hole die Spiel-ID

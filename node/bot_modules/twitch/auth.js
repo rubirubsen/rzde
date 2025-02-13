@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import console2025 from '../logging';
+import console2025 from '../logging.js';
 
 dotenv.config({path: './../../.env'});
 let accessToken;

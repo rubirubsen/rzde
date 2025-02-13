@@ -1,3 +1,8 @@
+<?php
+    if($_GET['client_type']){
+        $client_type = $_GET['client_type'];
+    }
+?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -20,7 +25,7 @@
             <p id="bottomRowText" class="bottomRowText">Artist Info</p>
         </div>
     </div>
-
+    <p class="hiddenClientType" id="client_type" style="display:none"><?php if($client_type){echo $client_type;} ?></p>
     <div id="newsScroll" class="newsBox">
         <p id="newsText" class="newsText">Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore</p>
     </div>

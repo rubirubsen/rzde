@@ -78,7 +78,7 @@ class TwitchUser {
 
   async createInDB() {
     try {
-      let pool = await sql.createPool(); 
+      let pool = await poolPromise; 
       await pool
           .request()
           .input("username", this.username)

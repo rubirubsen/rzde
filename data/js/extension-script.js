@@ -17,13 +17,15 @@ const scrollerRowDiv = document.getElementById('bottomRow');
 const trackInfoDiv = document.getElementById('track-info');
 const trackCover = document.getElementById('trackCover');
 const currentSongUrl = 'https://rubizockt.de/spotify/info/current_track.json';
+const client_type_p = document.getElementById('client_type')
+const client_type = client_type_p.innerHTML;
 
 if (socket && socket.readyState !== WebSocket.CLOSED) {
     socket.close();
 }
 
 if (!socket || socket === null) {
-    socket = new WebSocket(`wss://rubizockt.de:3000?client_type=overlay`);
+    socket = new WebSocket(`wss://rubizockt.de:3000?client_type=${client_type}`);
 }
 
 
@@ -217,7 +219,7 @@ function getURLParameter(name) {
 
 
 window.onload = function() {
-
+    console.log(client_type);
     getNews();
 
 };

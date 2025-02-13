@@ -42,7 +42,7 @@ data/vendor/*
 data/sql/
 
 # Node.js und npm spezifische Dateien
-node/
+
 node_modules/
 data/spotify/info/
 data/portainer.db
@@ -121,3 +121,7 @@ data/img/tcg_sticker/sticker1.png
 data/img/tcg_sticker/sticker2.png
 data/img/tcg_sticker/sticker3.png
 data/portainer.db
+node/core
+data/spotify/info/full_info.txt
+data/portainer.db
+data/useractivity.db
